@@ -9,6 +9,7 @@ from config import get_settings
 from src.agent import generate_experiment_plan, run_full_agent_workflow
 from src.code_analyzer import analyze_github_repository, analyze_zip_archive
 from src.code_analyzer.models import CodeAnalysisResult
+from src.evaluation import generate_evaluation_table, verify_workflow_outputs
 from src.report import generate_markdown_report
 from src.rag.qa import PaperRAGService
 
@@ -177,6 +178,55 @@ def run_complete_workflow(
         return f"# Workflow Status\n\n- **ERROR**: {exc}", "", "", "", "", None, None
 
 
+def create_evaluation_sheet(
+    question: str,
+    reference_answer: str,
+    human_notes: str,
+    rag_answer_input: str,
+    agent_answer_input: str,
+    agent_verifier_answer_input: str,
+    paper_service: Optional[PaperRAGService],
+    code_analysis: Optional[CodeAnalysisResult],
+    experiment_plan: str,
+) -> Tuple[str, str, Optional[str], Optional[str]]:
+    """Generate Markdown and CSV evaluation sheets for three modes."""
+    try:
+        rag_answer = rag_answer_input
+        if not rag_answer.strip() and paper_service is not None and question.strip():
+            qa_result = paper_service.answer(question)
+            rag_answer = f"{qa_result.answer}\n\n{qa_result.citations_markdown}"
+
+        agent_answer = agent_answer_input or experiment_plan
+        if not agent_answer.strip():
+            agent_answer = "未提供 Agent 分步骤回答。建议先生成实验计划或运行完整 Agent 工作流。"
+
+        agent_verifier_answer = agent_verifier_answer_input
+        if not agent_verifier_answer.strip():
+            verification = verify_workflow_outputs(
+                paper_summary="",
+                code_analysis=code_analysis,
+                experiment_plan=agent_answer,
+                project_report="",
+            )
+            agent_verifier_answer = f"{agent_answer}\n\n{verification.to_markdown()}"
+
+        result = generate_evaluation_table(
+            settings=get_settings(),
+            question=question,
+            reference_answer=reference_answer,
+            human_notes=human_notes,
+            rag_answer=rag_answer,
+            agent_answer=agent_answer,
+            agent_verifier_answer=agent_verifier_answer,
+        )
+        status = (
+            f"Evaluation saved to `{result.markdown_path}` and `{result.csv_path}`"
+        )
+        return status, result.markdown, str(result.markdown_path), str(result.csv_path)
+    except Exception as exc:
+        return f"Evaluation generation failed: {exc}", "", None, None
+
+
 def build_app():
     """Build the Gradio Blocks UI."""
     try:
@@ -343,6 +393,62 @@ def build_app():
                         workflow_verifier,
                         workflow_plan_file,
                         workflow_report_file,
+                    ],
+                )
+
+            with gr.Tab("实验评测"):
+                evaluation_question = gr.Textbox(
+                    label="Question",
+                    placeholder="输入要评测的问题，例如：论文方法的核心创新是什么？",
+                    lines=3,
+                )
+                evaluation_reference = gr.Textbox(
+                    label="Reference Answer / Standard Answer",
+                    placeholder="填写论文原文依据、教师标准答案或人工参考答案。",
+                    lines=5,
+                )
+                evaluation_notes = gr.Textbox(
+                    label="Human Notes",
+                    placeholder="填写人工评分备注、评分标准或观察到的问题。",
+                    lines=4,
+                )
+                rag_answer_input = gr.Textbox(
+                    label="普通 RAG 回答（可留空，系统会尝试用当前论文索引生成）",
+                    lines=5,
+                )
+                agent_answer_input = gr.Textbox(
+                    label="Agent 分步骤回答（可留空，系统会尝试使用当前实验计划）",
+                    lines=5,
+                )
+                agent_verifier_answer_input = gr.Textbox(
+                    label="Agent + Verifier 回答（可留空，系统会基于当前内容生成 Verifier 记录）",
+                    lines=5,
+                )
+                evaluation_button = gr.Button("Generate Evaluation Sheet", variant="primary")
+                evaluation_status = gr.Markdown(label="Status")
+                evaluation_markdown = gr.Markdown(label="Evaluation Markdown")
+                with gr.Row():
+                    evaluation_markdown_file = gr.File(label="Download Markdown")
+                    evaluation_csv_file = gr.File(label="Download CSV")
+
+                evaluation_button.click(
+                    fn=create_evaluation_sheet,
+                    inputs=[
+                        evaluation_question,
+                        evaluation_reference,
+                        evaluation_notes,
+                        rag_answer_input,
+                        agent_answer_input,
+                        agent_verifier_answer_input,
+                        service_state,
+                        code_analysis_state,
+                        plan_state,
+                    ],
+                    outputs=[
+                        evaluation_status,
+                        evaluation_markdown,
+                        evaluation_markdown_file,
+                        evaluation_csv_file,
                     ],
                 )
 

@@ -41,6 +41,8 @@ Implemented in the MVP:
 - Saving generated plans and reports to `data/outputs/`.
 - One-click Agent workflow: paper parsing, RAG indexing, paper summary, code analysis, experiment planning, report writing, and verification.
 - Verifier for evidence attribution, uncertainty, missing evidence, human-review items, and possible hallucinations.
+- Manual experiment evaluation for comparing ordinary RAG, step-by-step Agent, and Agent + Verifier outputs.
+- Markdown and CSV evaluation sheets saved to `data/outputs/`.
 - Basic tests for paper RAG, code analysis, experiment planning, report writing, and workflow modules.
 
 Planned after the MVP:
@@ -111,6 +113,29 @@ Complete Agent workflow:
 4. Enter the task goal, such as "复现论文核心实验，并生成本科 AI 项目展示报告".
 5. Click **一键运行**.
 6. Review status logs, paper summary, experiment plan, project report, and verifier output.
+
+Experiment evaluation workflow:
+
+1. Open the **实验评测** tab.
+2. Enter a question, standard answer or reference answer, and optional human notes.
+3. Optionally paste outputs from three modes:
+   - 普通 RAG 回答
+   - Agent 分步骤回答
+   - Agent + Verifier 回答
+4. If the ordinary RAG answer is left blank, the app will try to use the current paper index to answer the question.
+5. If the Agent answer is left blank, the app will try to use the current experiment plan.
+6. Click **Generate Evaluation Sheet**.
+7. Download the Markdown and CSV evaluation files from `data/outputs/`.
+
+Evaluation metrics:
+
+1. 答案完整性
+2. 引用正确性
+3. 复现计划可执行性
+4. 是否存在无依据结论
+5. 人工评分备注
+
+The evaluation sheet is intentionally designed for manual scoring. It records comparable outputs and scoring fields, but it does not pretend that automatic scoring can fully replace human review.
 
 Verifier output:
 
@@ -188,7 +213,7 @@ Directory responsibilities:
 - `src/code_analyzer/`: GitHub cloning, zip extraction, file tree scanning, key file detection, and codebase summarization.
 - `src/agent/`: experiment reproduction planning and complete multi-step workflow orchestration.
 - `src/report/`: Markdown project report generation.
-- `src/evaluation/`: evidence and uncertainty verification, citation checking, fact checking, and quality scoring.
+- `src/evaluation/`: experiment evaluation tables, evidence and uncertainty verification, citation checking, fact checking, and quality scoring.
 - `src/storage/`: local history persistence with SQLite or JSON.
 - `src/utils/`: shared utilities such as logging, file handling, and path validation.
 - `tests/`: basic unit and integration tests.
@@ -251,6 +276,7 @@ Directory responsibilities:
 - Generate Markdown experiment reports. Done.
 - Include environment setup, dataset requirements, commands, risks, and expected outputs. Done.
 - Implement evidence and uncertainty verifier. Done.
+- Implement manual experiment evaluation tables for three answer modes. Done.
 - Improve citation grounding and fact-check result summaries.
 
 ### Phase 7: Tests, Examples, and Polish
@@ -262,4 +288,4 @@ Directory responsibilities:
 
 ## 8. Current Status
 
-This repository currently provides a runnable paper-RAG, code-analysis, experiment-planning, Markdown-report, evidence verifier, and complete Agent workflow MVP. The next recommended task is to add persistent session history and stronger citation-level verification.
+This repository currently provides a runnable paper-RAG, code-analysis, experiment-planning, Markdown-report, evidence verifier, experiment evaluation, and complete Agent workflow MVP. The next recommended task is to add persistent session history and stronger citation-level verification.
