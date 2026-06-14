@@ -1,0 +1,239 @@
+# ResearchFlow-Agent
+
+面向大学生科研训练场景的多工具调用 AI Agent 系统。项目目标是帮助用户围绕一篇科研论文和对应代码仓库，完成论文阅读、RAG 问答、代码结构分析、实验复现计划生成、实验报告生成，以及引用与事实检查。
+
+> 当前阶段：MVP 已实现论文 PDF RAG 问答、代码仓库分析、实验复现计划生成和 Markdown 项目报告生成。Verifier 暂未实现。
+
+## 1. Project Overview
+
+ResearchFlow-Agent is not a general chatbot. It is designed as a research-assistant workflow system for students who need to understand papers, inspect codebases, and plan reproducible experiments.
+
+Planned full workflow:
+
+1. Upload a research paper PDF.
+2. Provide a GitHub repository URL or upload a code archive.
+3. Extract and chunk paper content.
+4. Build a local vector index for retrieval-augmented question answering.
+5. Analyze repository structure, dependencies, scripts, and experiment entry points.
+6. Generate a step-by-step reproduction plan.
+7. Produce an experiment report.
+8. Check claims, citations, and facts against the paper context.
+
+## 2. Target Features
+
+Implemented in the MVP:
+
+- Gradio Web UI.
+- PDF upload.
+- PDF text parsing with page numbers.
+- Text chunking.
+- Embedding generation.
+- Local vector retrieval.
+- Paper question answering.
+- Answer evidence with source page numbers and snippets.
+- GitHub repository cloning into `data/workspaces/`.
+- Uploaded zip code archive extraction and analysis.
+- Directory tree generation.
+- Key file detection for README, dependency files, training/inference scripts, model/data/config files.
+- LLM-based or local fallback code structure summary.
+- Experiment reproduction plan generation.
+- Markdown project report generation.
+- Saving generated plans and reports to `data/outputs/`.
+- Basic tests for paper RAG, code analysis, experiment planning, and report writing modules.
+
+Planned after the MVP:
+
+- Citation and fact-checking verifier.
+- Local history storage with SQLite or JSON.
+
+## 3. Tech Stack
+
+- Python 3.10+
+- Gradio
+- PyMuPDF / pdfplumber
+- ChromaDB or FAISS
+- sentence-transformers
+- OpenAI-compatible API client
+- GitPython / subprocess
+- SQLite / local JSON
+- pytest
+
+## 4. Quick Start
+
+Create or activate a non-base Python environment first. Python 3.10+ is recommended.
+
+```bash
+conda create -n researchflow python=3.11
+conda activate researchflow
+pip install -r requirements.txt
+cp .env.example .env
+python app.py
+```
+
+Open the local Gradio URL.
+
+Paper QA workflow:
+
+1. Open the **论文问答** tab.
+2. Upload a PDF.
+3. Click **Parse and Index**.
+4. Ask a question and inspect page-grounded citations.
+
+Code analysis workflow:
+
+1. Open the **代码分析** tab.
+2. Paste a GitHub repository URL and click **Clone and Analyze**, or upload a `.zip` archive and click **Analyze Zip**.
+3. Review the generated directory tree, key files, and code structure summary.
+
+Experiment planning workflow:
+
+1. Complete paper indexing and code analysis when possible.
+2. Open the **实验计划** tab.
+3. Add optional constraints such as CPU-only, small dataset, or portfolio style.
+4. Click **Generate Experiment Plan**.
+5. Download the saved Markdown file from `data/outputs/`.
+
+Report writing workflow:
+
+1. Generate an experiment plan first when possible.
+2. Open the **项目报告** tab.
+3. Add optional report notes.
+4. Click **Generate Markdown Report**.
+5. Download the saved Markdown report from `data/outputs/`.
+
+To run tests:
+
+```bash
+pytest tests
+```
+
+## 5. Configuration
+
+Edit `.env` after copying `.env.example`.
+
+Important settings:
+
+- `OPENAI_API_KEY`: enables LLM-generated answers when configured.
+- `OPENAI_BASE_URL`: any OpenAI-compatible API endpoint.
+- `OPENAI_MODEL`: chat model name.
+- `EMBEDDING_MODEL`: default sentence-transformers model.
+- `ALLOW_HASH_EMBEDDING_FALLBACK`: when true, the app falls back to a deterministic local hashing embedding if sentence-transformers cannot load.
+- `MAX_PAPER_CHUNK_TOKENS`: chunk size.
+- `CHUNK_OVERLAP_TOKENS`: overlap between adjacent chunks.
+- `TOP_K_RETRIEVAL`: number of retrieved chunks shown as evidence.
+
+If no LLM API key is configured, the paper QA app still works in offline mode and returns extractive answers from retrieved paper snippets. The code analyzer, experiment planner, and report writer also work offline with deterministic structure-based templates.
+
+## 6. Project Structure
+
+```text
+researchflow-agent/
+  README.md
+  AGENTS.md
+  requirements.txt
+  .env.example
+  app.py
+  config.py
+  data/
+    uploads/
+    vectorstores/
+    workspaces/
+    outputs/
+  src/
+    llm/
+    paper/
+    rag/
+    code_analyzer/
+    agent/
+    report/
+    evaluation/
+    storage/
+    utils/
+  tests/
+  examples/
+```
+
+Directory responsibilities:
+
+- `data/uploads/`: uploaded PDFs and code archives.
+- `data/vectorstores/`: local vector database files.
+- `data/workspaces/`: cloned or extracted code repositories.
+- `data/outputs/`: generated plans, answers, and reports.
+- `src/llm/`: OpenAI-compatible LLM client and prompt helpers.
+- `src/paper/`: PDF parsing, section extraction, and metadata handling.
+- `src/rag/`: document chunking, embeddings, vector store, and retrieval.
+- `src/code_analyzer/`: GitHub cloning, zip extraction, file tree scanning, key file detection, and codebase summarization.
+- `src/agent/`: experiment reproduction planning and future multi-step workflow orchestration.
+- `src/report/`: Markdown project report generation.
+- `src/evaluation/`: citation checking, fact checking, and quality scoring.
+- `src/storage/`: local history persistence with SQLite or JSON.
+- `src/utils/`: shared utilities such as logging, file handling, and path validation.
+- `tests/`: basic unit and integration tests.
+- `examples/`: sample inputs, workflows, and generated outputs.
+
+## 7. Development Roadmap
+
+### Phase 1: Project Initialization
+
+- Create project structure.
+- Add dependency list.
+- Add environment variable template.
+- Write README and AGENTS development guide.
+- Define module responsibilities and implementation plan.
+
+### Phase 2: Paper RAG MVP
+
+- Implement PDF upload handling. Done.
+- Extract full text from PDFs with page numbers. Done.
+- Split text into chunks. Done.
+- Generate embeddings. Done.
+- Store and retrieve chunks from a local vector store. Done.
+- Build Gradio paper question-answering UI. Done.
+- Show page citations and source snippets. Done.
+- Add basic tests. Done.
+
+### Phase 3: LLM Client Improvements
+
+- Implement OpenAI-compatible API wrapper.
+- Support configurable base URL, API key, and model name.
+- Add retry and richer error handling.
+- Add prompt templates for paper reading and experiment planning.
+
+### Phase 4: Code Repository Analysis
+
+- Support GitHub repository URL input. Done.
+- Clone repositories into `data/workspaces/`. Done.
+- Analyze file tree, dependencies, scripts, and likely experiment entry points. Done.
+- Add support for uploaded `.zip` code archives. Done.
+- Summarize code structure with an LLM or local fallback. Done.
+
+### Phase 5: Agent Workflow
+
+- Design the tool-calling workflow:
+  - paper parser
+  - retriever
+  - repository analyzer
+  - reproduction planner
+  - report writer
+  - citation checker
+- Implement experiment reproduction planner. Done.
+- Save generated plans to `data/outputs/`. Done.
+- Implement a structured task state object for broader workflows.
+- Add history persistence.
+
+### Phase 6: Report and Evaluation
+
+- Generate Markdown experiment reports. Done.
+- Include environment setup, dataset requirements, commands, risks, and expected outputs. Done.
+- Implement citation grounding and fact-check result summaries.
+
+### Phase 7: Tests, Examples, and Polish
+
+- Add unit tests for each module.
+- Add a small demo workflow under `examples/`.
+- Improve README with screenshots and usage instructions.
+- Prepare the project as a complete undergraduate AI project showcase.
+
+## 8. Current Status
+
+This repository currently provides a runnable paper-RAG, code-analysis, experiment-planning, and Markdown-report MVP. The next recommended task is to add citation/fact verification and persistent session history.
