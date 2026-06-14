@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Optional, Tuple
 
 from config import get_settings
-from src.agent import generate_experiment_plan
+from src.agent import generate_experiment_plan, run_full_agent_workflow
 from src.code_analyzer import analyze_github_repository, analyze_zip_archive
 from src.code_analyzer.models import CodeAnalysisResult
 from src.report import generate_markdown_report
@@ -123,6 +123,58 @@ def create_project_report(
         return status, result.markdown, str(result.output_path)
     except Exception as exc:
         return f"Report generation failed: {exc}", "", None
+
+
+def run_complete_workflow(
+    uploaded_file: Any,
+    github_url: str,
+    task_goal: str,
+) -> Tuple[str, str, str, str, str, Optional[str], Optional[str]]:
+    """Run the full Agent workflow from PDF and GitHub URL."""
+    try:
+        result = run_full_agent_workflow(
+            settings=get_settings(),
+            pdf_path=_file_path(uploaded_file, "PDF paper"),
+            github_url=github_url,
+            task_goal=task_goal,
+        )
+        paper_summary = result.paper_summary or "论文摘要未生成。"
+        plan_markdown = (
+            result.experiment_plan.markdown
+            if result.experiment_plan is not None
+            else "实验计划未生成。"
+        )
+        report_markdown = (
+            result.project_report.markdown
+            if result.project_report is not None
+            else "项目报告未生成。"
+        )
+        verifier_markdown = (
+            result.verification.to_markdown()
+            if result.verification is not None
+            else "Verifier 未执行。"
+        )
+        plan_file = (
+            str(result.experiment_plan.output_path)
+            if result.experiment_plan is not None
+            else None
+        )
+        report_file = (
+            str(result.project_report.output_path)
+            if result.project_report is not None
+            else None
+        )
+        return (
+            result.logs_markdown(),
+            paper_summary,
+            plan_markdown,
+            report_markdown,
+            verifier_markdown,
+            plan_file,
+            report_file,
+        )
+    except Exception as exc:
+        return f"# Workflow Status\n\n- **ERROR**: {exc}", "", "", "", "", None, None
 
 
 def build_app():
@@ -255,6 +307,43 @@ def build_app():
                         report_notes,
                     ],
                     outputs=[report_status, report_output, report_file],
+                )
+
+            with gr.Tab("完整 Agent 工作流"):
+                workflow_pdf_input = gr.File(label="Upload Paper PDF", file_types=[".pdf"])
+                workflow_repo_url = gr.Textbox(
+                    label="GitHub Repository URL",
+                    placeholder="https://github.com/user/repository",
+                )
+                workflow_goal = gr.Textbox(
+                    label="Task Goal",
+                    placeholder="例如：复现论文核心实验，并生成本科 AI 项目展示报告。",
+                    lines=4,
+                )
+                workflow_button = gr.Button("一键运行", variant="primary")
+
+                workflow_logs = gr.Markdown(label="Status Logs")
+                workflow_paper_summary = gr.Markdown(label="Paper Structured Summary")
+                workflow_plan = gr.Markdown(label="Experiment Plan")
+                workflow_report = gr.Markdown(label="Project Report")
+                workflow_verifier = gr.Markdown(label="Verifier")
+
+                with gr.Row():
+                    workflow_plan_file = gr.File(label="Download Experiment Plan")
+                    workflow_report_file = gr.File(label="Download Project Report")
+
+                workflow_button.click(
+                    fn=run_complete_workflow,
+                    inputs=[workflow_pdf_input, workflow_repo_url, workflow_goal],
+                    outputs=[
+                        workflow_logs,
+                        workflow_paper_summary,
+                        workflow_plan,
+                        workflow_report,
+                        workflow_verifier,
+                        workflow_plan_file,
+                        workflow_report_file,
+                    ],
                 )
 
     return demo
