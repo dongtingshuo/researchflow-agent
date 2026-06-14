@@ -123,6 +123,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIsNotNone(result.experiment_plan)
         self.assertIsNotNone(result.project_report)
         self.assertIsNotNone(result.verification)
+        self.assertIn("来自论文的内容", result.verification.to_markdown())
+        self.assertIn("需要人工确认", result.verification.to_markdown())
 
     def test_workflow_failure_returns_completed_steps_and_error(self):
         def broken_code_analyzer(url, settings):

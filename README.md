@@ -2,7 +2,7 @@
 
 面向大学生科研训练场景的多工具调用 AI Agent 系统。项目目标是帮助用户围绕一篇科研论文和对应代码仓库，完成论文阅读、RAG 问答、代码结构分析、实验复现计划生成、实验报告生成，以及引用与事实检查。
 
-> 当前阶段：MVP 已实现论文 PDF RAG 问答、代码仓库分析、实验复现计划生成、Markdown 项目报告生成和完整 Agent 工作流。已提供轻量 Verifier。
+> 当前阶段：MVP 已实现论文 PDF RAG 问答、代码仓库分析、实验复现计划生成、Markdown 项目报告生成和完整 Agent 工作流。已提供证据与不确定性 Verifier。
 
 ## 1. Project Overview
 
@@ -40,13 +40,13 @@ Implemented in the MVP:
 - Markdown project report generation.
 - Saving generated plans and reports to `data/outputs/`.
 - One-click Agent workflow: paper parsing, RAG indexing, paper summary, code analysis, experiment planning, report writing, and verification.
-- Lightweight verifier for required sections and missing evidence warnings.
+- Verifier for evidence attribution, uncertainty, missing evidence, human-review items, and possible hallucinations.
 - Basic tests for paper RAG, code analysis, experiment planning, report writing, and workflow modules.
 
 Planned after the MVP:
 
 - Local history storage with SQLite or JSON.
-- Stronger citation and fact-checking verifier.
+- Stronger citation-level and fact-checking verifier.
 
 ## 3. Tech Stack
 
@@ -112,6 +112,18 @@ Complete Agent workflow:
 5. Click **一键运行**.
 6. Review status logs, paper summary, experiment plan, project report, and verifier output.
 
+Verifier output:
+
+1. 来自论文的内容
+2. 来自代码仓库的内容
+3. 模型推断的内容
+4. 缺少证据的内容
+5. 需要人工确认的内容
+6. 可能存在幻觉的内容
+7. 改进建议
+
+The verifier is intentionally conservative. It does not claim the generated plan or report is 100% correct; it separates visible evidence from model inference and highlights what still needs manual checking.
+
 To run tests:
 
 ```bash
@@ -176,7 +188,7 @@ Directory responsibilities:
 - `src/code_analyzer/`: GitHub cloning, zip extraction, file tree scanning, key file detection, and codebase summarization.
 - `src/agent/`: experiment reproduction planning and complete multi-step workflow orchestration.
 - `src/report/`: Markdown project report generation.
-- `src/evaluation/`: workflow verification, citation checking, fact checking, and quality scoring.
+- `src/evaluation/`: evidence and uncertainty verification, citation checking, fact checking, and quality scoring.
 - `src/storage/`: local history persistence with SQLite or JSON.
 - `src/utils/`: shared utilities such as logging, file handling, and path validation.
 - `tests/`: basic unit and integration tests.
@@ -238,7 +250,7 @@ Directory responsibilities:
 
 - Generate Markdown experiment reports. Done.
 - Include environment setup, dataset requirements, commands, risks, and expected outputs. Done.
-- Implement lightweight workflow verifier. Done.
+- Implement evidence and uncertainty verifier. Done.
 - Improve citation grounding and fact-check result summaries.
 
 ### Phase 7: Tests, Examples, and Polish
@@ -250,4 +262,4 @@ Directory responsibilities:
 
 ## 8. Current Status
 
-This repository currently provides a runnable paper-RAG, code-analysis, experiment-planning, Markdown-report, verifier, and complete Agent workflow MVP. The next recommended task is to add persistent session history and stronger evidence-level verification.
+This repository currently provides a runnable paper-RAG, code-analysis, experiment-planning, Markdown-report, evidence verifier, and complete Agent workflow MVP. The next recommended task is to add persistent session history and stronger citation-level verification.
