@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +11,7 @@ from src.agent.planner import _code_context, _paper_context
 from src.code_analyzer.models import CodeAnalysisResult
 from src.llm.client import ChatMessage, LLMClientError, OpenAICompatibleClient
 from src.rag.qa import PaperRAGService
+from src.utils.files import unique_output_path
 
 
 REPORT_SECTIONS = [
@@ -165,9 +165,7 @@ def _local_report(
 
 
 def _save_markdown(output_dir: Path, prefix: str, markdown: str) -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = output_dir / f"{prefix}-{timestamp}.md"
+    path = unique_output_path(output_dir, prefix, ".md")
     path.write_text(markdown, encoding="utf-8")
     return path
 

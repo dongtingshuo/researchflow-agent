@@ -27,6 +27,7 @@ class HashingEmbeddingModel:
 
     dimension: int = 384
     name: str = "hashing-fallback"
+    fallback_reason: str = ""
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         return [self._embed_one(text) for text in texts]
@@ -49,11 +50,11 @@ class HashingEmbeddingModel:
 class SentenceTransformerEmbeddingModel:
     """sentence-transformers embedding adapter."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, local_files_only: bool = False) -> None:
         from sentence_transformers import SentenceTransformer  # type: ignore
 
         self.name = model_name
-        self._model = SentenceTransformer(model_name)
+        self._model = SentenceTransformer(model_name, local_files_only=local_files_only)
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         vectors = self._model.encode(texts, normalize_embeddings=True)
@@ -66,10 +67,17 @@ def create_embedding_model(
 ) -> EmbeddingModel:
     """Create the configured embedding model with an optional offline fallback."""
     try:
-        return SentenceTransformerEmbeddingModel(model_name)
-    except Exception:
-        if allow_hash_fallback:
-            return HashingEmbeddingModel()
+        return SentenceTransformerEmbeddingModel(model_name, local_files_only=True)
+    except Exception as cache_exc:
+        try:
+            return SentenceTransformerEmbeddingModel(model_name, local_files_only=False)
+        except Exception as exc:
+            if allow_hash_fallback:
+                reason = f"{type(cache_exc).__name__}/{type(exc).__name__}"
+                return HashingEmbeddingModel(
+                    name=f"hashing-fallback; failed to load {model_name}: {reason}",
+                    fallback_reason=str(exc),
+                )
         raise
 
 

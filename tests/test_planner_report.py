@@ -67,6 +67,15 @@ class PlannerReportTests(unittest.TestCase):
             self.assertIn("## 总结与展望", result.markdown)
             self.assertIn("python train.py", result.markdown)
 
+    def test_outputs_do_not_collide_when_generated_quickly(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings = _settings(tmpdir)
+            code_analysis = _code_analysis(tmpdir)
+            first = generate_experiment_plan(settings=settings, code_analysis=code_analysis)
+            second = generate_experiment_plan(settings=settings, code_analysis=code_analysis)
+
+        self.assertNotEqual(first.output_path, second.output_path)
+
 
 if __name__ == "__main__":
     unittest.main()

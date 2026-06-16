@@ -5,7 +5,11 @@ from pathlib import Path
 
 from config import Settings
 from src.code_analyzer import analyze_codebase, analyze_zip_archive
-from src.code_analyzer.analyzer import generate_directory_tree, identify_key_files
+from src.code_analyzer.analyzer import (
+    generate_directory_tree,
+    identify_key_files,
+    read_key_file_contents,
+)
 from src.code_analyzer.loader import CodeLoadError, extract_zip_archive
 
 
@@ -19,10 +23,15 @@ class CodeAnalyzerTests(unittest.TestCase):
             (root / "src" / "model.py").write_text("class Model: pass", encoding="utf-8")
             (root / "src" / "dataset.py").write_text("class Dataset: pass", encoding="utf-8")
             (root / "train.py").write_text("print('train')", encoding="utf-8")
+            (root / "sample.py").write_text("print('sample')", encoding="utf-8")
+            (root / "base_config.yaml").write_text("seed: 1", encoding="utf-8")
+            (root / "experiment.ipynb").write_text("{}", encoding="utf-8")
 
             tree = generate_directory_tree(root)
             key_files = identify_key_files(root)
+            enriched = read_key_file_contents(root, key_files)
             paths = {item.path for item in key_files}
+            by_path = {item.path: item for item in enriched}
 
         self.assertIn("README.md", tree)
         self.assertIn("src/", tree)
@@ -31,6 +40,17 @@ class CodeAnalyzerTests(unittest.TestCase):
         self.assertIn("src/model.py", paths)
         self.assertIn("src/dataset.py", paths)
         self.assertIn("train.py", paths)
+        self.assertIn("sample.py", paths)
+        self.assertIn("base_config.yaml", paths)
+        self.assertIn("experiment.ipynb", paths)
+        self.assertEqual(key_files[0].path, "README.md")
+        self.assertTrue(by_path["README.md"].has_content)
+        self.assertIn("# Demo", by_path["README.md"].content_excerpt)
+        self.assertTrue(by_path["requirements.txt"].has_content)
+        self.assertIn("torch", by_path["requirements.txt"].content_excerpt)
+        self.assertTrue(by_path["train.py"].has_content)
+        self.assertIn("print('train')", by_path["train.py"].content_excerpt)
+        self.assertIn("seed: 1", by_path["base_config.yaml"].content_excerpt)
 
     def test_analyze_codebase_without_llm_returns_local_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -45,6 +65,8 @@ class CodeAnalyzerTests(unittest.TestCase):
         self.assertIn("project/", result.directory_tree)
         self.assertIn("inference.py", result.key_files_markdown())
         self.assertIn("推理入口", result.summary)
+        self.assertIn("已读取内容", result.summary)
+        self.assertTrue(any(item.has_content for item in result.key_files))
 
     def test_analyze_zip_archive_extracts_and_analyzes(self):
         with tempfile.TemporaryDirectory() as tmpdir:

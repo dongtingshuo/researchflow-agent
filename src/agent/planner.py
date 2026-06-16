@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +10,7 @@ from config import Settings
 from src.code_analyzer.models import CodeAnalysisResult
 from src.llm.client import ChatMessage, LLMClientError, OpenAICompatibleClient
 from src.rag.qa import PaperRAGService, trim_snippet
+from src.utils.files import unique_output_path
 
 
 PLAN_SECTIONS = [
@@ -116,7 +116,10 @@ def _local_plan(
     )
     train_files = _files_by_role(code_analysis, {"train.py"})
     test_files = _files_by_role(code_analysis, {"test.py"})
-    inference_files = _files_by_role(code_analysis, {"inference.py", "demo.py"})
+    inference_files = _files_by_role(
+        code_analysis,
+        {"inference.py", "demo.py", "main.py", "notebook"},
+    )
     dataset_files = _files_by_role(code_analysis, {"dataset.py"})
     config_files = _files_by_role(code_analysis, {"config"})
 
@@ -150,7 +153,7 @@ def _local_plan(
             "",
             "## 测试步骤",
             f"- 测试入口：{_paths_or_unknown(test_files)}",
-            f"- 推理或 demo 入口：{_paths_or_unknown(inference_files)}",
+            f"- 推理、demo 或 notebook 入口：{_paths_or_unknown(inference_files)}",
             "- 先验证模型权重加载、单样本推理和输出格式，再运行完整测试集。",
             "",
             "## 指标记录方式",
@@ -235,9 +238,7 @@ def _paths_or_unknown(paths: list[str]) -> str:
 
 
 def _save_markdown(output_dir: Path, prefix: str, markdown: str) -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = output_dir / f"{prefix}-{timestamp}.md"
+    path = unique_output_path(output_dir, prefix, ".md")
     path.write_text(markdown, encoding="utf-8")
     return path
 

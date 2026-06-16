@@ -13,6 +13,14 @@ class KeyFile:
     role: str
     path: str
     reason: str
+    content_excerpt: str = ""
+    size_bytes: int = 0
+    line_count: int = 0
+
+    @property
+    def has_content(self) -> bool:
+        """Return whether this key file was successfully read."""
+        return bool(self.content_excerpt.strip())
 
 
 @dataclass(frozen=True)
@@ -30,7 +38,11 @@ class CodeAnalysisResult:
         """Render key files as Markdown for the UI."""
         if not self.key_files:
             return "No key files were recognized."
-        lines = ["| Role | Path | Reason |", "| --- | --- | --- |"]
+        lines = [
+            "| Role | Path | Reason | Content read |",
+            "| --- | --- | --- | --- |",
+        ]
         for item in self.key_files:
-            lines.append(f"| {item.role} | `{item.path}` | {item.reason} |")
+            status = f"yes, {item.line_count} lines" if item.has_content else "no"
+            lines.append(f"| {item.role} | `{item.path}` | {item.reason} | {status} |")
         return "\n".join(lines)

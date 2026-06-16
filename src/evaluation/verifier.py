@@ -109,18 +109,28 @@ def verify_workflow_outputs(
 
     paper_evidence = _extract_paper_evidence(paper_summary)
     code_evidence = _extract_code_evidence(code_analysis)
+    topic_mismatch = _detect_topic_mismatch(paper_evidence, code_evidence)
+    if topic_mismatch is not None:
+        issues.append(VerificationIssue("WARN", topic_mismatch.content))
     generated_text = "\n".join([experiment_plan, project_report])
-    model_inferences = _extract_model_inferences(generated_text)
-    missing_evidence = _extract_missing_evidence(generated_text, paper_evidence, code_evidence)
+    evidence_text = _evidence_text(paper_evidence, code_evidence)
+    model_inferences = _extract_model_inferences(generated_text, evidence_text)
+    missing_evidence = _extract_missing_evidence(
+        generated_text,
+        paper_evidence,
+        code_evidence,
+        evidence_text,
+    )
     human_review_needed = _extract_human_review_items(
         generated_text,
         code_analysis,
         missing_evidence,
     )
+    if topic_mismatch is not None:
+        human_review_needed.insert(0, topic_mismatch)
     possible_hallucinations = _extract_possible_hallucinations(
         generated_text,
-        paper_summary,
-        code_analysis,
+        evidence_text,
     )
     improvement_suggestions = _build_improvement_suggestions(
         paper_evidence,
@@ -131,8 +141,9 @@ def verify_workflow_outputs(
     )
 
     blocking = any(issue.level == "ERROR" for issue in issues)
+    needs_review = bool(missing_evidence or possible_hallucinations)
     return VerificationResult(
-        passed=not blocking,
+        passed=not blocking and not needs_review,
         paper_evidence=paper_evidence,
         code_evidence=code_evidence,
         model_inferences=model_inferences,
@@ -146,35 +157,46 @@ def verify_workflow_outputs(
 
 def _extract_paper_evidence(paper_summary: str) -> list[EvidenceItem]:
     items: list[EvidenceItem] = []
+    page_pattern = re.compile(r"(?:\[S\d+\]\s*)?(?:Page|page)\s*\d+|第\s*\d+\s*页")
     for line in _meaningful_lines(paper_summary):
-        if "Page " in line or line.startswith("##") or "论文" in line or "研究" in line:
-            items.append(EvidenceItem(content=line, source="paper_summary"))
+        if page_pattern.search(line):
+            items.append(EvidenceItem(content=line, source="paper_page_evidence"))
         if len(items) >= 8:
             break
-    if not items and paper_summary.strip():
-        items.append(EvidenceItem(content=_shorten(paper_summary), source="paper_summary"))
     return items
 
 
 def _extract_code_evidence(code_analysis: CodeAnalysisResult | None) -> list[EvidenceItem]:
     if code_analysis is None:
         return []
-    items = [
-        EvidenceItem(
-            content=f"{item.role}: {item.path} ({item.reason})",
-            source="code_key_file",
-        )
-        for item in code_analysis.key_files[:12]
-    ]
+    items = []
+    for item in code_analysis.key_files[:12]:
+        if item.has_content:
+            items.append(
+                EvidenceItem(
+                    content=(
+                        f"{item.role}: {item.path} ({item.line_count} lines) "
+                        f"{_shorten(item.content_excerpt, limit=260)}"
+                    ),
+                    source=f"code_file:{item.path}",
+                )
+            )
+        else:
+            items.append(
+                EvidenceItem(
+                    content=f"{item.role}: {item.path} ({item.reason})",
+                    source="code_key_file_without_content",
+                )
+            )
     for line in _meaningful_lines(code_analysis.summary):
-        if line.startswith("##") or "`" in line:
+        if "`" in line or any(item.path in line for item in code_analysis.key_files):
             items.append(EvidenceItem(content=line, source="code_summary"))
         if len(items) >= 14:
             break
     return items
 
 
-def _extract_model_inferences(generated_text: str) -> list[EvidenceItem]:
+def _extract_model_inferences(generated_text: str, evidence_text: str) -> list[EvidenceItem]:
     inference_markers = [
         "建议",
         "推荐",
@@ -187,8 +209,13 @@ def _extract_model_inferences(generated_text: str) -> list[EvidenceItem]:
     ]
     items = []
     for line in _meaningful_lines(generated_text):
-        if any(marker in line for marker in inference_markers):
-            items.append(EvidenceItem(content=line, source="generated_plan_or_report"))
+        if _is_non_content_line(line):
+            continue
+        if any(marker in line for marker in inference_markers) and not _line_supported_by_evidence(
+            line,
+            evidence_text,
+        ):
+            items.append(EvidenceItem(content=line, source="generated_inference"))
         if len(items) >= 12:
             break
     return items
@@ -198,6 +225,7 @@ def _extract_missing_evidence(
     generated_text: str,
     paper_evidence: list[EvidenceItem],
     code_evidence: list[EvidenceItem],
+    evidence_text: str,
 ) -> list[EvidenceItem]:
     items = []
     weak_markers = [
@@ -212,8 +240,12 @@ def _extract_missing_evidence(
         "尚未",
     ]
     for line in _meaningful_lines(generated_text):
+        if _is_non_content_line(line):
+            continue
         if any(marker in line for marker in weak_markers):
-            items.append(EvidenceItem(content=line, source="generated_plan_or_report"))
+            items.append(EvidenceItem(content=line, source="explicitly_missing_evidence"))
+        elif _is_claim_like(line) and not _line_supported_by_evidence(line, evidence_text):
+            items.append(EvidenceItem(content=line, source="unsupported_generated_claim"))
         if len(items) >= 12:
             break
     if not paper_evidence:
@@ -253,8 +285,7 @@ def _extract_human_review_items(
 
 def _extract_possible_hallucinations(
     generated_text: str,
-    paper_summary: str,
-    code_analysis: CodeAnalysisResult | None,
+    evidence_text: str,
 ) -> list[EvidenceItem]:
     items = []
     absolute_markers = [
@@ -268,22 +299,40 @@ def _extract_possible_hallucinations(
         "证明",
     ]
     metric_pattern = re.compile(r"\b\d+(?:\.\d+)?\s?(?:%|accuracy|acc|f1|map|bleu)\b", re.IGNORECASE)
-    evidence_text = "\n".join([paper_summary, _code_text(code_analysis)])
     for line in _meaningful_lines(generated_text):
+        if _is_non_content_line(line):
+            continue
         if any(marker in line for marker in absolute_markers):
-            items.append(EvidenceItem(content=line, source="absolute_or_overconfident_claim"))
-        elif metric_pattern.search(line) and line not in evidence_text:
+            if not _line_supported_by_evidence(line, evidence_text):
+                items.append(EvidenceItem(content=line, source="absolute_or_overconfident_claim"))
+        elif metric_pattern.search(line) and not _line_supported_by_evidence(line, evidence_text):
             items.append(EvidenceItem(content=line, source="metric_without_visible_evidence"))
         if len(items) >= 10:
             break
-    if not items:
-        items.append(
-            EvidenceItem(
-                content="未检测到明显绝对化或无证据指标声明，但仍需人工核对关键事实。",
-                source="verifier_note",
-            )
-        )
     return items
+
+
+def _detect_topic_mismatch(
+    paper_evidence: list[EvidenceItem],
+    code_evidence: list[EvidenceItem],
+) -> EvidenceItem | None:
+    """Detect low lexical overlap between paper evidence and code evidence."""
+    paper_tokens = _topic_tokens(" ".join(item.content for item in paper_evidence))
+    code_tokens = _topic_tokens(" ".join(item.content for item in code_evidence))
+    if len(paper_tokens) < 3 or len(code_tokens) < 3:
+        return None
+
+    overlap = paper_tokens & code_tokens
+    score = len(overlap) / max(1, min(len(paper_tokens), len(code_tokens)))
+    if score >= 0.08 or len(overlap) >= 2:
+        return None
+    return EvidenceItem(
+        content=(
+            "论文证据与代码仓库证据的主题词重叠很低，可能存在论文和代码仓库不匹配；"
+            "需要人工确认二者是否属于同一项目。"
+        ),
+        source="topic_consistency_check",
+    )
 
 
 def _build_improvement_suggestions(
@@ -334,6 +383,123 @@ def _meaningful_lines(text: str) -> list[str]:
     return lines
 
 
+def _evidence_text(
+    paper_evidence: list[EvidenceItem],
+    code_evidence: list[EvidenceItem],
+) -> str:
+    return "\n".join(item.content for item in paper_evidence + code_evidence).lower()
+
+
+def _is_non_content_line(line: str) -> bool:
+    stripped = line.strip()
+    if stripped.startswith("#") or stripped.startswith("|"):
+        return True
+    return set(stripped) <= {"-", "|", ":", " "}
+
+
+def _is_claim_like(line: str) -> bool:
+    if len(line) < 12:
+        return False
+    lower = line.lower()
+    claim_markers = [
+        "使用",
+        "采用",
+        "包含",
+        "实现",
+        "生成",
+        "训练",
+        "测试",
+        "数据集",
+        "模型",
+        "指标",
+        "结果",
+        "accuracy",
+        "acc",
+        "f1",
+        "map",
+        "bleu",
+    ]
+    return any(marker in lower for marker in claim_markers)
+
+
+def _line_supported_by_evidence(line: str, evidence_text: str) -> bool:
+    if not evidence_text:
+        return False
+    if re.search(r"\[(?:S\d+)\]", line) or re.search(r"(?:Page|page)\s*\d+", line):
+        return True
+
+    path_pattern = re.compile(r"[\w./-]+\.(?:py|md|txt|toml|ya?ml|json)")
+    for match in path_pattern.finditer(line):
+        if match.group(0).lower() in evidence_text:
+            return True
+
+    tokens = _support_tokens(line)
+    if not tokens:
+        return False
+    overlap = sum(1 for token in tokens if token in evidence_text)
+    return overlap >= min(3, len(tokens))
+
+
+def _support_tokens(text: str) -> list[str]:
+    raw_tokens = re.findall(r"[a-z0-9_]{3,}|[\u4e00-\u9fff]{2,}", text.lower())
+    stopwords = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "this",
+        "that",
+        "当前",
+        "需要",
+        "可以",
+        "建议",
+        "使用",
+        "进行",
+        "通过",
+    }
+    tokens = []
+    for token in raw_tokens:
+        if token in stopwords or token in tokens:
+            continue
+        tokens.append(token)
+    return tokens[:12]
+
+
+def _topic_tokens(text: str) -> set[str]:
+    raw_tokens = re.findall(r"[a-z0-9_]{3,}|[\u4e00-\u9fff]{2,}", text.lower())
+    stopwords = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "this",
+        "that",
+        "page",
+        "source",
+        "model",
+        "data",
+        "train",
+        "paper",
+        "code",
+        "readme",
+        "python",
+        "当前",
+        "需要",
+        "可以",
+        "建议",
+        "使用",
+        "进行",
+        "通过",
+        "论文",
+        "代码",
+        "模型",
+        "数据",
+        "训练",
+    }
+    return {token for token in raw_tokens if token not in stopwords}
+
+
 def _shorten(text: str, limit: int = 220) -> str:
     cleaned = " ".join(text.split())
     if len(cleaned) <= limit:
@@ -355,13 +521,6 @@ def _dedupe_items(items: list[EvidenceItem]) -> list[EvidenceItem]:
 
 def _has_role(code_analysis: CodeAnalysisResult, role: str) -> bool:
     return any(item.role == role for item in code_analysis.key_files)
-
-
-def _code_text(code_analysis: CodeAnalysisResult | None) -> str:
-    if code_analysis is None:
-        return ""
-    key_file_text = "\n".join(item.path for item in code_analysis.key_files)
-    return "\n".join([code_analysis.summary, code_analysis.directory_tree, key_file_text])
 
 
 _PLAN_SECTIONS = [

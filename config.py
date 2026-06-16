@@ -65,6 +65,8 @@ class Settings:
     openai_model: str = "gpt-4o-mini"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     allow_hash_embedding_fallback: bool = True
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    enable_cross_encoder_reranker: bool = True
     upload_dir: Path = UPLOAD_DIR
     vectorstore_dir: Path = VECTORSTORE_DIR
     workspace_dir: Path = WORKSPACE_DIR
@@ -72,7 +74,8 @@ class Settings:
     request_timeout_seconds: int = 60
     max_chunk_tokens: int = 220
     chunk_overlap_tokens: int = 40
-    top_k_retrieval: int = 5
+    top_k_retrieval: int = 8
+    reranker_candidate_multiplier: int = 4
 
     @property
     def llm_enabled(self) -> bool:
@@ -100,6 +103,8 @@ def get_settings() -> Settings:
             "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
         ),
         allow_hash_embedding_fallback=_env_bool("ALLOW_HASH_EMBEDDING_FALLBACK", True),
+        reranker_model=os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
+        enable_cross_encoder_reranker=_env_bool("ENABLE_CROSS_ENCODER_RERANKER", True),
         upload_dir=_resolve_path(os.getenv("UPLOAD_DIR", "data/uploads")),
         vectorstore_dir=_resolve_path(
             os.getenv("VECTORSTORE_DIR", "data/vectorstores")
@@ -109,7 +114,8 @@ def get_settings() -> Settings:
         request_timeout_seconds=_env_int("REQUEST_TIMEOUT_SECONDS", 60),
         max_chunk_tokens=_env_int("MAX_PAPER_CHUNK_TOKENS", 220),
         chunk_overlap_tokens=_env_int("CHUNK_OVERLAP_TOKENS", 40),
-        top_k_retrieval=_env_int("TOP_K_RETRIEVAL", 5),
+        top_k_retrieval=_env_int("TOP_K_RETRIEVAL", 8),
+        reranker_candidate_multiplier=_env_int("RERANKER_CANDIDATE_MULTIPLIER", 4),
     )
     ensure_directories(settings)
     return settings

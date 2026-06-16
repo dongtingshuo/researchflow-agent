@@ -36,11 +36,22 @@ KEY_FILE_NAMES = {
     "train.py": ("train.py", "Likely training entry point."),
     "test.py": ("test.py", "Likely test or evaluation entry point."),
     "demo.py": ("demo.py", "Likely demo script."),
+    "sample.py": ("demo.py", "Likely sampling or demo script."),
     "inference.py": ("inference.py", "Likely inference entry point."),
+    "infer.py": ("inference.py", "Likely inference entry point."),
+    "predict.py": ("inference.py", "Likely prediction entry point."),
     "model.py": ("model.py", "Likely model definition file."),
     "models.py": ("model.py", "Likely model definitions file."),
     "dataset.py": ("dataset.py", "Likely dataset loading or preprocessing file."),
     "datasets.py": ("dataset.py", "Likely dataset loading or preprocessing file."),
+    "eval.py": ("test.py", "Likely evaluation entry point."),
+    "evaluate.py": ("test.py", "Likely evaluation entry point."),
+    "main.py": ("main.py", "Likely main entry point."),
+    "run.py": ("main.py", "Likely run entry point."),
+    "wrapper.py": ("main.py", "Likely environment or model wrapper."),
+    "wrappers.py": ("main.py", "Likely environment or model wrappers."),
+    "env.py": ("dataset.py", "Likely environment or task data interface."),
+    "wikienv.py": ("dataset.py", "Likely Wikipedia environment or task data interface."),
     "config.py": ("config", "Configuration file."),
     "config.yaml": ("config", "Configuration file."),
     "config.yml": ("config", "Configuration file."),
@@ -93,7 +104,7 @@ def analyze_codebase(
         raise ValueError(f"Workspace does not exist or is not a directory: {workspace}")
 
     directory_tree = generate_directory_tree(workspace)
-    key_files = identify_key_files(workspace)
+    key_files = read_key_file_contents(workspace, identify_key_files(workspace))
     result = CodeAnalysisResult(
         source_type=source_type,
         source=source,
@@ -165,6 +176,8 @@ def identify_key_files(root: Path) -> list[KeyFile]:
         lower_relative = relative.lower()
 
         match = KEY_FILE_NAMES.get(lower_name)
+        if match is None and path.suffix.lower() == ".ipynb":
+            match = ("notebook", "Notebook experiment or demo entry point.")
         if match is None and _looks_like_config_file(lower_name, lower_relative):
             match = ("config", "Configuration file.")
         if match is None:
@@ -174,7 +187,60 @@ def identify_key_files(root: Path) -> list[KeyFile]:
         seen_paths.add(relative)
         key_files.append(KeyFile(role=match[0], path=relative, reason=match[1]))
 
+    key_files.sort(key=_key_file_priority)
     return key_files
+
+
+def read_key_file_contents(
+    root: Path,
+    key_files: list[KeyFile],
+    max_chars: int = 6000,
+    max_size_bytes: int = 400_000,
+) -> list[KeyFile]:
+    """Read important file contents into KeyFile metadata for grounded analysis."""
+    root = root.resolve()
+    enriched: list[KeyFile] = []
+    for item in key_files:
+        path = (root / item.path).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            enriched.append(item)
+            continue
+        if not path.exists() or not path.is_file():
+            enriched.append(item)
+            continue
+
+        size_bytes = path.stat().st_size
+        if size_bytes > max_size_bytes:
+            enriched.append(
+                KeyFile(
+                    role=item.role,
+                    path=item.path,
+                    reason=f"{item.reason} File is too large to preview safely.",
+                    size_bytes=size_bytes,
+                )
+            )
+            continue
+
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            enriched.append(item)
+            continue
+
+        excerpt = _clean_excerpt(text, max_chars=max_chars)
+        enriched.append(
+            KeyFile(
+                role=item.role,
+                path=item.path,
+                reason=item.reason,
+                content_excerpt=excerpt,
+                size_bytes=size_bytes,
+                line_count=len(text.splitlines()),
+            )
+        )
+    return enriched
 
 
 def summarize_codebase(result: CodeAnalysisResult, settings: Settings) -> str:
@@ -217,9 +283,14 @@ def _local_summary(result: CodeAnalysisResult) -> str:
     lines.append("## 核心文件")
     if result.key_files:
         for item in result.key_files[:20]:
-            lines.append(f"- `{item.path}`: {item.reason}")
+            content_status = "已读取内容" if item.has_content else "未读取内容"
+            lines.append(f"- `{item.path}`: {item.reason}（{content_status}）")
     else:
         lines.append("- 暂未识别到 README、依赖文件或常见入口脚本。")
+    content_summary = _local_content_summary(result.key_files)
+    if content_summary:
+        lines.extend(["", "## 关键文件内容证据"])
+        lines.extend(content_summary)
     lines.append("")
     lines.append("## 模型定义位置")
     lines.append(_role_line(by_role, "model.py", "未发现常见 `model.py` / `models.py`。"))
@@ -274,6 +345,14 @@ def _build_summary_prompt(result: CodeAnalysisResult) -> str:
 def _read_key_file_snippets(root: Path, key_files: list[KeyFile]) -> list[str]:
     snippets: list[str] = []
     for item in key_files[:12]:
+        if item.content_excerpt.strip():
+            snippets.append(
+                f"### {item.path}\n"
+                f"role: {item.role}\n"
+                f"lines: {item.line_count}, bytes: {item.size_bytes}\n"
+                f"{item.content_excerpt}"
+            )
+            continue
         path = root / item.path
         if not path.exists() or path.stat().st_size > 200_000:
             continue
@@ -283,6 +362,37 @@ def _read_key_file_snippets(root: Path, key_files: list[KeyFile]) -> list[str]:
             continue
         snippets.append(f"### {item.path}\n{text[:2500]}")
     return snippets
+
+
+def _local_content_summary(key_files: list[KeyFile]) -> list[str]:
+    lines: list[str] = []
+    for item in key_files[:12]:
+        if not item.has_content:
+            continue
+        evidence = _first_useful_lines(item.content_excerpt, max_lines=4)
+        if not evidence:
+            continue
+        lines.append(f"- `{item.path}` ({item.role}, {item.line_count} lines): {evidence}")
+    return lines
+
+
+def _first_useful_lines(text: str, max_lines: int = 4) -> str:
+    useful = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or set(line) <= {"-", "=", "#", " "}:
+            continue
+        useful.append(line)
+        if len(useful) >= max_lines:
+            break
+    return " / ".join(useful)
+
+
+def _clean_excerpt(text: str, max_chars: int) -> str:
+    cleaned = text.replace("\x00", "")
+    if len(cleaned) <= max_chars:
+        return cleaned.strip()
+    return cleaned[: max_chars - 80].rstrip() + "\n\n[truncated: key file preview limited]"
 
 
 def _group_key_files(key_files: list[KeyFile]) -> dict[str, list[str]]:
@@ -306,10 +416,34 @@ def _paths_line(paths: list[str]) -> str:
 def _looks_like_config_file(lower_name: str, lower_relative: str) -> bool:
     return (
         lower_name.startswith("config.")
+        or lower_name.endswith("_config.py")
+        or lower_name.endswith("_config.yaml")
+        or lower_name.endswith("_config.yml")
+        or lower_name.endswith(".config")
         or lower_name in {"settings.py", "settings.yaml", "settings.yml", "params.yaml"}
         or "/configs/" in lower_relative
         or lower_relative.startswith("configs/")
     )
+
+
+def _key_file_priority(item: KeyFile) -> tuple[int, int, str]:
+    role_priority = {
+        "README": 0,
+        "requirements.txt": 1,
+        "pyproject.toml": 2,
+        "environment.yml": 3,
+        "config": 4,
+        "train.py": 5,
+        "test.py": 6,
+        "inference.py": 7,
+        "demo.py": 8,
+        "main.py": 9,
+        "model.py": 10,
+        "dataset.py": 11,
+        "notebook": 12,
+    }
+    depth = len(Path(item.path).parts)
+    return (role_priority.get(item.role, 99), depth, item.path.lower())
 
 
 def _is_ignored(path: Path) -> bool:

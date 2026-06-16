@@ -37,6 +37,15 @@ class ExperimentEvaluationTests(unittest.TestCase):
         self.assertEqual(rows[0]["mode"], "普通 RAG 回答")
         self.assertIn("citation_correctness", rows[0])
 
+    def test_evaluation_outputs_do_not_collide(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings = Settings(output_dir=Path(tmpdir) / "outputs")
+            first = generate_evaluation_table(settings=settings, question="Q1")
+            second = generate_evaluation_table(settings=settings, question="Q2")
+
+        self.assertNotEqual(first.markdown_path, second.markdown_path)
+        self.assertNotEqual(first.csv_path, second.csv_path)
+
 
 if __name__ == "__main__":
     unittest.main()

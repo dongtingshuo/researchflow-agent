@@ -35,7 +35,8 @@ def index_pdf(uploaded_file: Any) -> Tuple[str, Optional[PaperRAGService]]:
             f"- Pages: {index.paper.page_count}\n"
             f"- Chunks: {index.chunk_count}\n"
             f"- Characters: {index.paper.total_characters}\n"
-            f"- Embedding: {index.embedding_model_name}"
+            f"- Embedding: {index.embedding_model_name}\n"
+            f"- Reranker: {index.reranker_model_name}"
         )
         return status, service
     except Exception as exc:

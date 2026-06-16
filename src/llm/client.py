@@ -44,6 +44,7 @@ class OpenAICompatibleClient:
             "model": self.model,
             "messages": [message.__dict__ for message in messages],
             "temperature": 0.2,
+            "max_tokens": 650,
         }
         data = json.dumps(payload).encode("utf-8")
         request = urllib.request.Request(
@@ -52,6 +53,8 @@ class OpenAICompatibleClient:
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "ResearchFlow-Agent/0.1",
             },
             method="POST",
         )
@@ -69,6 +72,29 @@ class OpenAICompatibleClient:
 
         try:
             parsed = json.loads(body)
-            return parsed["choices"][0]["message"]["content"].strip()
+            content = parsed["choices"][0]["message"]["content"].strip()
+            return _strip_reasoning_blocks(content)
         except Exception as exc:
             raise LLMClientError("LLM API returned an unexpected response.") from exc
+
+
+def _strip_reasoning_blocks(content: str) -> str:
+    """Remove provider-specific reasoning blocks from visible answers."""
+    if "</think>" in content:
+        return content.split("</think>", 1)[1].strip()
+    if content.lstrip().startswith("<think>"):
+        lines = []
+        inside_think = False
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("<think>"):
+                inside_think = True
+                continue
+            if inside_think and not stripped:
+                inside_think = False
+                continue
+            if not inside_think:
+                lines.append(line)
+        cleaned = "\n".join(lines).strip()
+        return cleaned or content.strip()
+    return content

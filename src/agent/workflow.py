@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -15,6 +14,7 @@ from src.evaluation.verifier import VerificationResult, verify_workflow_outputs
 from src.llm.client import ChatMessage, LLMClientError, OpenAICompatibleClient
 from src.report import ReportWriterResult, generate_markdown_report
 from src.rag.qa import PaperRAGService, trim_snippet
+from src.utils.files import unique_output_path
 
 
 @dataclass(frozen=True)
@@ -199,9 +199,7 @@ class AgentWorkflow:
         self._log(result, step, "DONE", message)
 
     def _save_workflow_summary(self, result: AgentWorkflowResult) -> Path:
-        self.settings.output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        path = self.settings.output_dir / f"workflow-summary-{timestamp}.md"
+        path = unique_output_path(self.settings.output_dir, "workflow-summary", ".md")
         sections = [result.logs_markdown()]
         if result.paper_summary:
             sections.extend(["", "# Paper Summary", "", result.paper_summary])

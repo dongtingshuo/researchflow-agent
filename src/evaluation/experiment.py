@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 from config import Settings
+from src.utils.files import unique_output_path
 
 
 EVALUATION_MODES = [
@@ -158,10 +158,8 @@ def save_evaluation_artifacts(
     rows: list[EvaluationRow],
 ) -> tuple[Path, Path]:
     """Save Markdown and CSV evaluation artifacts."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    markdown_path = output_dir / f"evaluation-{timestamp}.md"
-    csv_path = output_dir / f"evaluation-{timestamp}.csv"
+    markdown_path = unique_output_path(output_dir, "evaluation", ".md")
+    csv_path = unique_output_path(output_dir, "evaluation", ".csv")
     markdown_path.write_text(markdown, encoding="utf-8")
 
     with csv_path.open("w", newline="", encoding="utf-8") as file:
