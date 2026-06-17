@@ -512,6 +512,12 @@ Planned improvements:
 - Evaluation result visualization
 - Automatic benchmark execution with summary charts
 
+## License / 许可证
+
+This project is released under the MIT License. See [LICENSE](LICENSE) for details.
+
+本项目使用 MIT License 开源。详情见 [LICENSE](LICENSE)。
+
 ## 声明 / Notes
 
 本项目用于科研工作流辅助，不替代真实科研判断。论文事实、实验指标、复现结果和报告结论都应由使用者进行人工复核。
