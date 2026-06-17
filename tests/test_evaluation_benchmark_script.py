@@ -3,15 +3,15 @@ import unittest
 from pathlib import Path
 
 from config import Settings
-from scripts.run_demo_benchmark import (
-    DemoCase,
+from scripts.run_evaluation_benchmark import (
+    EvaluationCase,
     load_cases,
     run_cases,
     save_results,
 )
 
 
-class DemoBenchmarkScriptTests(unittest.TestCase):
+class EvaluationBenchmarkScriptTests(unittest.TestCase):
     def test_load_cases_from_examples_file(self):
         cases = load_cases(Path("examples/evaluation_benchmark.json"))
 
@@ -23,7 +23,7 @@ class DemoBenchmarkScriptTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
             cases = [
-                DemoCase(
+                EvaluationCase(
                     case_id="clip-data-scale",
                     paper="CLIP",
                     question="How many image-text pairs?",

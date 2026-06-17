@@ -331,7 +331,7 @@ def _build_summary_prompt(result: CodeAnalysisResult) -> str:
     snippets = "\n\n".join(_read_key_file_snippets(result.workspace_path, result.key_files))
     sections = "\n".join(f"- {section}" for section in SUMMARY_SECTIONS)
     return (
-        "Please analyze this codebase for an undergraduate AI research project.\n\n"
+        "Please analyze this codebase for a professional research workflow.\n\n"
         f"Source type: {result.source_type}\n"
         f"Source: {result.source}\n\n"
         f"Directory tree:\n{result.directory_tree}\n\n"

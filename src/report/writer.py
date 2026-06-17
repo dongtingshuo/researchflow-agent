@@ -77,14 +77,14 @@ def _generate_with_llm(
 
     sections = "\n".join(f"{index}. {section}" for index, section in enumerate(REPORT_SECTIONS, 1))
     prompt = (
-        "请生成一份适合作为本科生人工智能项目经历展示的 Markdown 项目报告。"
+        "请生成一份专业的 Markdown 技术报告。"
         "报告必须使用中文，结构必须包含以下章节：\n"
         f"{sections}\n\n"
         f"论文上下文：\n{paper_context}\n\n"
         f"代码分析上下文：\n{code_context}\n\n"
         f"实验复现计划：\n{experiment_plan or '未生成实验计划'}\n\n"
         f"用户补充要求：\n{user_notes or '无'}\n\n"
-        "要求内容专业、清晰、可展示；缺少真实结果时保留可填写模板，不要编造实验数值。"
+        "要求内容专业、清晰、可复核；缺少真实结果时保留可填写模板，不要编造实验数值。"
     )
     client = OpenAICompatibleClient(
         api_key=settings.openai_api_key,

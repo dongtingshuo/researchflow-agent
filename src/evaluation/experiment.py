@@ -27,7 +27,7 @@ EVALUATION_METRICS = [
 
 @dataclass(frozen=True)
 class BenchmarkCase:
-    """One repeatable evaluation case for portfolio/demo experiments."""
+    """One repeatable evaluation case for system validation."""
 
     case_id: str
     paper: str
@@ -70,7 +70,7 @@ DEFAULT_BENCHMARK_CASES = [
             "The CLIP paper states that it creates a dataset of 400 million "
             "(image, text) pairs for training."
         ),
-        expected_pages="Page 2 in the local CLIP PDF used by the demo",
+        expected_pages="Page 2 in the local CLIP PDF used by the benchmark",
         expected_terms=["400 million", "image", "text", "pairs", "CLIP"],
         repository_url="https://github.com/openai/CLIP",
         evaluation_focus="Quantity answer, page citation, and direct evidence snippet.",
@@ -82,7 +82,7 @@ DEFAULT_BENCHMARK_CASES = [
         reference_answer=(
             "The ReAct paper evaluates on HotPotQA, Fever, ALFWorld, and WebShop."
         ),
-        expected_pages="Pages 1 and 3 in the local ReAct PDF used by the demo",
+        expected_pages="Pages 1 and 3 in the local ReAct PDF used by the benchmark",
         expected_terms=["HotPotQA", "Fever", "ALFWorld", "WebShop"],
         repository_url="https://github.com/ysymyth/ReAct",
         evaluation_focus="Named benchmark preservation and no unsupported extra tasks.",
@@ -96,7 +96,7 @@ DEFAULT_BENCHMARK_CASES = [
             "document for a generated sequence, and RAG-Token, which can use "
             "different documents per target token."
         ),
-        expected_pages="Pages 1 and 3 in the local RAG PDF used by the demo",
+        expected_pages="Pages 1 and 3 in the local RAG PDF used by the benchmark",
         expected_terms=["RAG-Sequence", "RAG-Token", "same document", "different document"],
         repository_url="https://github.com/facebookresearch/DPR",
         evaluation_focus="Method-name preservation and formulation distinction.",
@@ -145,7 +145,7 @@ def generate_benchmark_template(
     settings: Settings,
     cases: list[BenchmarkCase] | None = None,
 ) -> EvaluationResult:
-    """Generate a repeatable benchmark sheet for multiple demo questions."""
+    """Generate a repeatable benchmark sheet for multiple evaluation questions."""
     active_cases = cases or DEFAULT_BENCHMARK_CASES
     markdown = render_benchmark_markdown(active_cases)
     markdown_path, csv_path = save_benchmark_artifacts(settings.output_dir, markdown, active_cases)
@@ -223,7 +223,9 @@ def render_evaluation_markdown(
 def render_benchmark_markdown(cases: list[BenchmarkCase]) -> str:
     """Render a multi-case benchmark protocol for repeatable experiments."""
     lines = [
-        "# ResearchFlow-Agent Demo Benchmark",
+        "# ResearchFlow-Agent Evaluation Benchmark",
+        "",
+        "# ResearchFlow-Agent 评测 Benchmark",
         "",
         "## 目的 / Purpose",
         "用固定论文问题比较普通 RAG、Agent 分步骤、Agent + Verifier 三种模式，记录答案、引用页码、证据片段和人工分数。",

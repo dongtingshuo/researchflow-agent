@@ -232,11 +232,11 @@ def create_evaluation_sheet(
         return f"Evaluation generation failed: {exc}", "", None, None
 
 
-def create_demo_benchmark_template() -> Tuple[str, str, Optional[str], Optional[str]]:
-    """Generate the default multi-case demo benchmark sheet."""
+def create_evaluation_benchmark_template() -> Tuple[str, str, Optional[str], Optional[str]]:
+    """Generate the default multi-case evaluation benchmark sheet."""
     try:
         result = generate_benchmark_template(get_settings())
-        status = f"Demo benchmark saved to `{result.markdown_path}` and `{result.csv_path}`"
+        status = f"Evaluation benchmark saved to `{result.markdown_path}` and `{result.csv_path}`"
         return status, result.markdown, str(result.markdown_path), str(result.csv_path)
     except Exception as exc:
         return f"Benchmark generation failed: {exc}", "", None, None
@@ -330,7 +330,7 @@ def build_app():
                 plan_state = gr.State(value="")
                 planner_notes = gr.Textbox(
                     label="Additional Requirements",
-                    placeholder="例如：只使用 CPU、先跑最小 demo、优先生成本科项目展示版本。",
+                    placeholder="例如：只使用 CPU、先跑最小可验证流程、优先生成技术报告。",
                     lines=4,
                 )
                 planner_button = gr.Button(
@@ -355,7 +355,7 @@ def build_app():
             with gr.Tab("项目报告"):
                 report_notes = gr.Textbox(
                     label="Additional Report Notes",
-                    placeholder="例如：面向保研项目经历，强调系统设计和可扩展性。",
+                    placeholder="例如：强调系统设计、可扩展性和证据核验流程。",
                     lines=4,
                 )
                 report_button = gr.Button("Generate Markdown Report", variant="primary")
@@ -382,7 +382,7 @@ def build_app():
                 )
                 workflow_goal = gr.Textbox(
                     label="Task Goal",
-                    placeholder="例如：复现论文核心实验，并生成本科 AI 项目展示报告。",
+                    placeholder="例如：复现论文核心实验，并生成技术报告。",
                     lines=4,
                 )
                 workflow_button = gr.Button("一键运行", variant="primary")
@@ -441,7 +441,7 @@ def build_app():
                 )
                 with gr.Row():
                     evaluation_button = gr.Button("Generate Evaluation Sheet", variant="primary")
-                    benchmark_button = gr.Button("Generate Demo Benchmark")
+                    benchmark_button = gr.Button("Generate Evaluation Benchmark")
                 evaluation_status = gr.Markdown(label="Status")
                 evaluation_markdown = gr.Markdown(label="Evaluation Markdown")
                 with gr.Row():
@@ -469,7 +469,7 @@ def build_app():
                     ],
                 )
                 benchmark_button.click(
-                    fn=create_demo_benchmark_template,
+                    fn=create_evaluation_benchmark_template,
                     inputs=[],
                     outputs=[
                         evaluation_status,

@@ -17,7 +17,7 @@ class CodeAnalyzerTests(unittest.TestCase):
     def test_generate_tree_and_identify_key_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            (root / "README.md").write_text("# Demo", encoding="utf-8")
+            (root / "README.md").write_text("# Sample", encoding="utf-8")
             (root / "requirements.txt").write_text("torch", encoding="utf-8")
             (root / "src").mkdir()
             (root / "src" / "model.py").write_text("class Model: pass", encoding="utf-8")
@@ -45,7 +45,7 @@ class CodeAnalyzerTests(unittest.TestCase):
         self.assertIn("experiment.ipynb", paths)
         self.assertEqual(key_files[0].path, "README.md")
         self.assertTrue(by_path["README.md"].has_content)
-        self.assertIn("# Demo", by_path["README.md"].content_excerpt)
+        self.assertIn("# Sample", by_path["README.md"].content_excerpt)
         self.assertTrue(by_path["requirements.txt"].has_content)
         self.assertIn("torch", by_path["requirements.txt"].content_excerpt)
         self.assertTrue(by_path["train.py"].has_content)
@@ -74,7 +74,7 @@ class CodeAnalyzerTests(unittest.TestCase):
             archive_path = tmp / "code.zip"
             with zipfile.ZipFile(archive_path, "w") as archive:
                 archive.writestr("sample/README.md", "# Sample")
-                archive.writestr("sample/demo.py", "print('demo')")
+                archive.writestr("sample/demo.py", "print('sample')")
                 archive.writestr("sample/config.yaml", "batch_size: 4")
 
             settings = Settings(workspace_dir=tmp / "workspaces")

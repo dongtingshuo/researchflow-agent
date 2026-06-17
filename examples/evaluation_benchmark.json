@@ -4,7 +4,7 @@
     "paper": "CLIP: Learning Transferable Visual Models From Natural Language Supervision",
     "question": "How many image-text pairs were used to train CLIP?",
     "reference_answer": "The CLIP paper states that it creates a dataset of 400 million (image, text) pairs for training.",
-    "expected_pages": "Page 2 in the local CLIP PDF used by the demo",
+    "expected_pages": "Page 2 in the local CLIP PDF used by the benchmark",
     "expected_terms": ["400 million", "image", "text", "pairs", "CLIP"],
     "repository_url": "https://github.com/openai/CLIP",
     "evaluation_focus": "Quantity answer, page citation, and direct evidence snippet."
@@ -14,7 +14,7 @@
     "paper": "ReAct: Synergizing Reasoning and Acting in Language Models",
     "question": "Which tasks or benchmarks are used in ReAct?",
     "reference_answer": "The ReAct paper evaluates on HotPotQA, Fever, ALFWorld, and WebShop.",
-    "expected_pages": "Pages 1 and 3 in the local ReAct PDF used by the demo",
+    "expected_pages": "Pages 1 and 3 in the local ReAct PDF used by the benchmark",
     "expected_terms": ["HotPotQA", "Fever", "ALFWorld", "WebShop"],
     "repository_url": "https://github.com/ysymyth/ReAct",
     "evaluation_focus": "Named benchmark preservation and no unsupported extra tasks."
@@ -24,7 +24,7 @@
     "paper": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
     "question": "What are the two RAG formulations?",
     "reference_answer": "The two formulations are RAG-Sequence, which uses the same retrieved document for a generated sequence, and RAG-Token, which can use different documents per target token.",
-    "expected_pages": "Pages 1 and 3 in the local RAG PDF used by the demo",
+    "expected_pages": "Pages 1 and 3 in the local RAG PDF used by the benchmark",
     "expected_terms": ["RAG-Sequence", "RAG-Token", "same document", "different document"],
     "repository_url": "https://github.com/facebookresearch/DPR",
     "evaluation_focus": "Method-name preservation and formulation distinction."

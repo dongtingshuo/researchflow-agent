@@ -73,7 +73,7 @@ def _generate_with_llm(
 
     sections = "\n".join(f"{index}. {section}" for index, section in enumerate(PLAN_SECTIONS, 1))
     prompt = (
-        "请基于论文解析结果和代码分析结果，为本科生科研训练场景生成一份"
+        "请基于论文解析结果和代码分析结果，生成一份"
         "可执行的实验复现计划。要求使用中文 Markdown，结构必须包含以下章节：\n"
         f"{sections}\n\n"
         f"论文上下文：\n{paper_context}\n\n"

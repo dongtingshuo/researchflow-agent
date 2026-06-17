@@ -59,7 +59,7 @@ class ExperimentEvaluationTests(unittest.TestCase):
 
             self.assertTrue(result.markdown_path.exists())
             self.assertTrue(result.csv_path.exists())
-            self.assertIn("ResearchFlow-Agent Demo Benchmark", result.markdown)
+            self.assertIn("ResearchFlow-Agent Evaluation Benchmark", result.markdown)
             self.assertIn("clip-data-scale", result.markdown)
             self.assertIn("react-benchmarks", result.markdown)
             self.assertIn("rag-formulations", result.markdown)

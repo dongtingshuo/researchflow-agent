@@ -3,9 +3,9 @@
 **基于多工具调用的科研论文阅读与实验复现 AI Agent 系统**  
 **A multi-tool AI Agent system for research paper reading, repository analysis, experiment reproduction planning, and evidence-aware reporting**
 
-ResearchFlow-Agent 面向大学生科研训练、课程项目、科研入门和 AI 项目经历展示。系统支持上传论文 PDF、构建论文 RAG 知识库、分析 GitHub 代码仓库、生成实验复现计划、生成 Markdown 项目报告，并通过 Verifier 标注证据来源与不确定性。
+ResearchFlow-Agent 是一个面向科研论文阅读、代码仓库分析、实验复现规划和证据核验的专业 AI Agent 系统。系统支持上传论文 PDF、构建论文 RAG 知识库、分析 GitHub 代码仓库、生成实验复现计划、生成 Markdown 技术报告，并通过 Verifier 标注证据来源与不确定性。
 
-ResearchFlow-Agent is designed for undergraduate research training, AI course projects, early-stage research practice, and portfolio-ready project demonstrations. It supports PDF paper ingestion, paper-grounded RAG, GitHub repository analysis, experiment reproduction planning, Markdown report generation, and evidence-aware verification.
+ResearchFlow-Agent is a professional AI Agent system for research paper reading, code repository analysis, experiment reproduction planning, and evidence verification. It supports PDF paper ingestion, paper-grounded RAG, GitHub repository analysis, experiment planning, Markdown technical report generation, and evidence-aware verification.
 
 ![ResearchFlow-Agent Paper QA](docs/images/paper-qa-tab.jpg)
 
@@ -17,7 +17,6 @@ ResearchFlow-Agent is not a generic chatbot. It is a research workflow agent cen
 
 适用场景：
 
-- 本科生人工智能项目经历展示
 - 科研论文阅读与方法梳理
 - 开源论文代码仓库结构分析
 - 实验复现计划设计
@@ -26,7 +25,6 @@ ResearchFlow-Agent is not a generic chatbot. It is a research workflow agent cen
 
 Use cases:
 
-- Undergraduate AI portfolio projects
 - Research paper reading and method understanding
 - Open-source research repository analysis
 - Experiment reproduction planning
@@ -43,23 +41,23 @@ Use cases:
 | Report Writer | 生成包含背景、相关工作、方法、系统设计、实验步骤和结果模板的 Markdown 报告 | Generate Markdown reports with background, related work, methods, system design, experiments, and result templates |
 | Agent Workflow | 一键执行论文解析、RAG 构建、论文摘要、代码分析、计划生成、报告生成和 Verifier 检查 | Run the full pipeline with one click: paper parsing, RAG indexing, summary, code analysis, planning, reporting, and verification |
 | Verifier | 区分论文证据、代码证据、模型推断、缺少证据、人工确认项和潜在幻觉 | Separate paper evidence, code evidence, model inference, missing evidence, human-review items, and possible hallucinations |
-| Evaluation | 生成普通 RAG、Agent 分步骤、Agent + Verifier 三种模式的人工评分表，并提供固定 demo benchmark | Generate manual evaluation sheets and a fixed demo benchmark for ordinary RAG, step-by-step Agent, and Agent + Verifier outputs |
+| Evaluation | 生成普通 RAG、Agent 分步骤、Agent + Verifier 三种模式的人工评分表，并提供固定 evaluation benchmark | Generate manual evaluation sheets and a fixed evaluation benchmark for ordinary RAG, step-by-step Agent, and Agent + Verifier outputs |
 
 ## 当前质量状态 / Current Quality Status
 
-当前版本已经完成可展示 MVP，并通过真实论文 smoke tests 验证了核心链路：
+当前版本已经完成可运行 MVP，并通过真实论文 smoke tests 验证了核心链路：
 
 - CLIP 数量题：回答 `400 million`，Top-1 引用为 Page 2，引用片段包含 `400 million (image, text) pairs`。
 - ReAct benchmark 题：保留 HotPotQA、Fever、ALFWorld、WebShop 等原始 benchmark 名称。
 - RAG formulation 题：区分 RAG-Sequence 和 RAG-Token，并引用 same-document / different-document 证据。
-- 单元测试：`40 passed`。
+- 单元测试：`42 passed`。
 
-The current version is a portfolio-ready MVP validated with real-paper smoke tests:
+The current version is a runnable MVP validated with real-paper smoke tests:
 
 - CLIP quantity question: answers `400 million`, with Page 2 as the top citation and a direct evidence snippet.
 - ReAct benchmark question: preserves HotPotQA, Fever, ALFWorld, and WebShop.
 - RAG formulation question: distinguishes RAG-Sequence and RAG-Token with grounded evidence.
-- Unit tests: `40 passed`.
+- Unit tests: `42 passed`.
 
 ## 界面截图 / Screenshots
 
@@ -311,40 +309,40 @@ Generated files:
 - `data/outputs/evaluation-*.md`
 - `data/outputs/evaluation-*.csv`
 
-### 5. Demo Benchmark / 固定演示评测集
+### 5. Evaluation Benchmark / 固定评测集
 
-项目提供固定 demo benchmark，便于在课程展示、项目经历材料或答辩时重复验证：
+项目提供固定 evaluation benchmark，便于重复验证系统在论文问答、证据引用和方法区分任务中的表现：
 
 - `examples/evaluation_benchmark.json`: 三个固定问题，覆盖 CLIP、ReAct、RAG。
-- `examples/demo_workflows.md`: 四个推荐演示流程。
-- `examples/demo_results.md`: 当前版本的真实论文 smoke test 结果摘要。
-- `docs/project_showcase.md`: 项目展示文档，可用于课程答辩、简历项目经历或作品集说明。
+- `examples/validation_workflows.md`: 四个推荐验证流程。
+- `examples/validation_results.md`: 当前版本的真实论文 smoke test 结果摘要。
+- `docs/technical_overview.md`: 技术概览文档，说明系统架构、核心模块、验证结果和局限性。
 
-The project includes a fixed demo benchmark for repeatable portfolio demonstrations:
+The project includes a fixed evaluation benchmark for repeatable validation:
 
 - `examples/evaluation_benchmark.json`: three fixed questions covering CLIP, ReAct, and RAG.
-- `examples/demo_workflows.md`: recommended demo workflows.
-- `examples/demo_results.md`: current real-paper smoke-test summary.
-- `docs/project_showcase.md`: portfolio-style project showcase document.
+- `examples/validation_workflows.md`: recommended validation workflows.
+- `examples/validation_results.md`: current real-paper smoke-test summary.
+- `docs/technical_overview.md`: technical overview covering architecture, modules, validation results, and limitations.
 
-在 Gradio 的 **实验评测** Tab 中点击 **Generate Demo Benchmark**，可导出：
+在 Gradio 的 **实验评测** Tab 中点击 **Generate Evaluation Benchmark**，可导出：
 
 - `data/outputs/benchmark-evaluation-*.md`
 - `data/outputs/benchmark-evaluation-*.csv`
 
-Click **Generate Demo Benchmark** in the **实验评测** tab to export Markdown and CSV benchmark sheets.
+Click **Generate Evaluation Benchmark** in the **实验评测** tab to export Markdown and CSV benchmark sheets.
 
-也可以使用一键脚本生成 demo benchmark 结果：
+也可以使用一键脚本生成 evaluation benchmark 结果：
 
 ```bash
 conda activate researchflow
-python scripts/run_demo_benchmark.py
+python scripts/run_evaluation_benchmark.py
 ```
 
 默认不会调用 LLM，适合本地快速验证和 CI 环境。若需要使用 `.env` 中配置的 OpenAI-compatible API：
 
 ```bash
-python scripts/run_demo_benchmark.py --use-llm
+python scripts/run_evaluation_benchmark.py --use-llm
 ```
 
 The CLI script runs locally by default without LLM calls. Add `--use-llm` to use the configured OpenAI-compatible API.
@@ -415,7 +413,7 @@ The repository includes GitHub Actions CI in `.github/workflows/tests.yml`, whic
 - 实验计划与报告生成
 - 完整 Agent Workflow 成功与失败路径
 - Verifier 证据归因与不确定性输出
-- 实验评测表与 demo benchmark Markdown / CSV 导出
+- 实验评测表与 evaluation benchmark Markdown / CSV 导出
 
 Current tests cover:
 
@@ -428,7 +426,7 @@ Current tests cover:
 - Experiment planning and report writing
 - Full Agent Workflow success and failure paths
 - Verifier evidence attribution and uncertainty reporting
-- Evaluation and demo benchmark Markdown / CSV export
+- Evaluation and evaluation benchmark Markdown / CSV export
 
 ## 当前状态 / Current Status
 
@@ -456,6 +454,6 @@ Planned improvements:
 
 ## 声明 / Notes
 
-本项目用于科研训练和项目展示辅助，不替代真实科研判断。论文事实、实验指标、复现结果和报告结论都应由使用者进行人工复核。
+本项目用于科研工作流辅助，不替代真实科研判断。论文事实、实验指标、复现结果和报告结论都应由使用者进行人工复核。
 
-This project is intended to support research training and project presentation. It does not replace human research judgment. Paper facts, experiment metrics, reproduction results, and report conclusions should be manually verified.
+This project is intended to support research workflows. It does not replace human research judgment. Paper facts, experiment metrics, reproduction results, and report conclusions should be manually verified.

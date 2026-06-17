@@ -1,8 +1,8 @@
-"""Run the fixed ResearchFlow-Agent demo benchmark.
+"""Run the fixed ResearchFlow-Agent evaluation benchmark.
 
 The script is intentionally local-first:
 - By default, it disables LLM calls to avoid unexpected API usage.
-- It looks for demo PDFs under data/test_inputs/.
+- It looks for benchmark PDFs under data/test_inputs/.
 - Missing PDFs are recorded as skipped cases instead of crashing the run.
 """
 
@@ -33,7 +33,7 @@ DEFAULT_PDF_NAMES = {
 
 
 @dataclass(frozen=True)
-class DemoCase:
+class EvaluationCase:
     """One benchmark case loaded from examples/evaluation_benchmark.json."""
 
     case_id: str
@@ -47,7 +47,7 @@ class DemoCase:
 
 
 @dataclass(frozen=True)
-class DemoResult:
+class EvaluationResult:
     """Serializable result for one benchmark case."""
 
     case_id: str
@@ -63,13 +63,13 @@ class DemoResult:
     notes: str = ""
 
 
-def load_cases(path: Path) -> list[DemoCase]:
+def load_cases(path: Path) -> list[EvaluationCase]:
     """Load benchmark cases from JSON."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     cases = []
     for item in payload:
         cases.append(
-            DemoCase(
+            EvaluationCase(
                 case_id=item["case_id"],
                 paper=item["paper"],
                 question=item["question"],
@@ -84,11 +84,11 @@ def load_cases(path: Path) -> list[DemoCase]:
 
 
 def run_cases(
-    cases: list[DemoCase],
+    cases: list[EvaluationCase],
     settings: Settings,
     pdf_root: Path,
     pdf_overrides: dict[str, Path],
-) -> list[DemoResult]:
+) -> list[EvaluationResult]:
     """Run all benchmark cases and collect results."""
     results = []
     for case in cases:
@@ -98,7 +98,7 @@ def run_cases(
         )
         if not pdf_path.exists():
             results.append(
-                DemoResult(
+                EvaluationResult(
                     case_id=case.case_id,
                     paper=case.paper,
                     question=case.question,
@@ -120,7 +120,7 @@ def run_cases(
             qa_result = service.answer(case.question)
             combined = f"{qa_result.answer}\n{qa_result.citations_markdown}"
             results.append(
-                DemoResult(
+                EvaluationResult(
                     case_id=case.case_id,
                     paper=case.paper,
                     question=case.question,
@@ -142,7 +142,7 @@ def run_cases(
             )
         except Exception as exc:
             results.append(
-                DemoResult(
+                EvaluationResult(
                     case_id=case.case_id,
                     paper=case.paper,
                     question=case.question,
@@ -160,12 +160,12 @@ def run_cases(
 
 
 def save_results(
-    results: list[DemoResult],
+    results: list[EvaluationResult],
     output_dir: Path,
 ) -> tuple[Path, Path]:
     """Save benchmark results as JSON and Markdown."""
-    json_path = unique_output_path(output_dir, "demo-benchmark-results", ".json")
-    markdown_path = unique_output_path(output_dir, "demo-benchmark-results", ".md")
+    json_path = unique_output_path(output_dir, "evaluation-benchmark-results", ".json")
+    markdown_path = unique_output_path(output_dir, "evaluation-benchmark-results", ".md")
     json_path.write_text(
         json.dumps([asdict(result) for result in results], ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -174,10 +174,12 @@ def save_results(
     return json_path, markdown_path
 
 
-def render_results_markdown(results: list[DemoResult]) -> str:
+def render_results_markdown(results: list[EvaluationResult]) -> str:
     """Render benchmark results as a compact Markdown report."""
     lines = [
-        "# ResearchFlow-Agent Demo Benchmark Results",
+        "# ResearchFlow-Agent Evaluation Benchmark Results",
+        "",
+        "# ResearchFlow-Agent 评测 Benchmark 结果",
         "",
         "| Case | Status | Top Pages | Expected Term Hits | Notes |",
         "| --- | --- | --- | --- | --- |",
@@ -208,10 +210,10 @@ def render_results_markdown(results: list[DemoResult]) -> str:
                 f"- Question: {result.question}",
                 f"- Status: {result.status}",
                 "",
-                "### Answer",
+                "### Answer / 回答",
                 result.answer.strip() or "No answer.",
                 "",
-                "### Citations",
+                "### Citations / 引用",
                 result.citations.strip() or "No citations.",
             ]
         )
@@ -265,7 +267,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the demo benchmark CLI."""
+    """Run the evaluation benchmark CLI."""
     args = build_parser().parse_args(argv)
     settings = get_settings()
     if not args.use_llm:
