@@ -76,6 +76,9 @@ class Settings:
     chunk_overlap_tokens: int = 40
     top_k_retrieval: int = 8
     reranker_candidate_multiplier: int = 4
+    git_clone_timeout_seconds: int = 120
+    max_zip_members: int = 4000
+    max_zip_total_bytes: int = 150_000_000
 
     @property
     def llm_enabled(self) -> bool:
@@ -116,6 +119,9 @@ def get_settings() -> Settings:
         chunk_overlap_tokens=_env_int("CHUNK_OVERLAP_TOKENS", 40),
         top_k_retrieval=_env_int("TOP_K_RETRIEVAL", 8),
         reranker_candidate_multiplier=_env_int("RERANKER_CANDIDATE_MULTIPLIER", 4),
+        git_clone_timeout_seconds=_env_int("GIT_CLONE_TIMEOUT_SECONDS", 120),
+        max_zip_members=_env_int("MAX_ZIP_MEMBERS", 4000),
+        max_zip_total_bytes=_env_int("MAX_ZIP_TOTAL_BYTES", 150_000_000),
     )
     ensure_directories(settings)
     return settings

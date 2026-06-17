@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+.DS_Store
+.idea/
 
 .env
 .venv/
@@ -13,8 +15,8 @@ data/uploads/*
 data/vectorstores/*
 data/workspaces/*
 data/outputs/*
+data/test_inputs/
 !data/uploads/.gitkeep
 !data/vectorstores/.gitkeep
 !data/workspaces/.gitkeep
 !data/outputs/.gitkeep
-

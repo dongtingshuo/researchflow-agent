@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from config import Settings
@@ -26,6 +26,20 @@ EVALUATION_METRICS = [
 
 
 @dataclass(frozen=True)
+class BenchmarkCase:
+    """One repeatable evaluation case for portfolio/demo experiments."""
+
+    case_id: str
+    paper: str
+    question: str
+    reference_answer: str
+    expected_pages: str = ""
+    expected_terms: list[str] = field(default_factory=list)
+    repository_url: str = ""
+    evaluation_focus: str = ""
+
+
+@dataclass(frozen=True)
 class EvaluationRow:
     """One row in the manual evaluation table."""
 
@@ -45,6 +59,49 @@ class EvaluationResult:
     markdown: str
     markdown_path: Path
     csv_path: Path
+
+
+DEFAULT_BENCHMARK_CASES = [
+    BenchmarkCase(
+        case_id="clip-data-scale",
+        paper="CLIP: Learning Transferable Visual Models From Natural Language Supervision",
+        question="How many image-text pairs were used to train CLIP?",
+        reference_answer=(
+            "The CLIP paper states that it creates a dataset of 400 million "
+            "(image, text) pairs for training."
+        ),
+        expected_pages="Page 2 in the local CLIP PDF used by the demo",
+        expected_terms=["400 million", "image", "text", "pairs", "CLIP"],
+        repository_url="https://github.com/openai/CLIP",
+        evaluation_focus="Quantity answer, page citation, and direct evidence snippet.",
+    ),
+    BenchmarkCase(
+        case_id="react-benchmarks",
+        paper="ReAct: Synergizing Reasoning and Acting in Language Models",
+        question="Which tasks or benchmarks are used in ReAct?",
+        reference_answer=(
+            "The ReAct paper evaluates on HotPotQA, Fever, ALFWorld, and WebShop."
+        ),
+        expected_pages="Pages 1 and 3 in the local ReAct PDF used by the demo",
+        expected_terms=["HotPotQA", "Fever", "ALFWorld", "WebShop"],
+        repository_url="https://github.com/ysymyth/ReAct",
+        evaluation_focus="Named benchmark preservation and no unsupported extra tasks.",
+    ),
+    BenchmarkCase(
+        case_id="rag-formulations",
+        paper="Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+        question="What are the two RAG formulations?",
+        reference_answer=(
+            "The two formulations are RAG-Sequence, which uses the same retrieved "
+            "document for a generated sequence, and RAG-Token, which can use "
+            "different documents per target token."
+        ),
+        expected_pages="Pages 1 and 3 in the local RAG PDF used by the demo",
+        expected_terms=["RAG-Sequence", "RAG-Token", "same document", "different document"],
+        repository_url="https://github.com/facebookresearch/DPR",
+        evaluation_focus="Method-name preservation and formulation distinction.",
+    ),
+]
 
 
 def generate_evaluation_table(
@@ -81,6 +138,17 @@ def generate_evaluation_table(
         human_notes=human_notes,
     )
     markdown_path, csv_path = save_evaluation_artifacts(settings.output_dir, markdown, rows)
+    return EvaluationResult(markdown=markdown, markdown_path=markdown_path, csv_path=csv_path)
+
+
+def generate_benchmark_template(
+    settings: Settings,
+    cases: list[BenchmarkCase] | None = None,
+) -> EvaluationResult:
+    """Generate a repeatable benchmark sheet for multiple demo questions."""
+    active_cases = cases or DEFAULT_BENCHMARK_CASES
+    markdown = render_benchmark_markdown(active_cases)
+    markdown_path, csv_path = save_benchmark_artifacts(settings.output_dir, markdown, active_cases)
     return EvaluationResult(markdown=markdown, markdown_path=markdown_path, csv_path=csv_path)
 
 
@@ -152,6 +220,50 @@ def render_evaluation_markdown(
     return "\n".join(lines)
 
 
+def render_benchmark_markdown(cases: list[BenchmarkCase]) -> str:
+    """Render a multi-case benchmark protocol for repeatable experiments."""
+    lines = [
+        "# ResearchFlow-Agent Demo Benchmark",
+        "",
+        "## 目的 / Purpose",
+        "用固定论文问题比较普通 RAG、Agent 分步骤、Agent + Verifier 三种模式，记录答案、引用页码、证据片段和人工分数。",
+        "",
+        "Use fixed paper questions to compare ordinary RAG, step-by-step Agent, and Agent + Verifier outputs.",
+        "",
+        "## 评分规则 / Scoring",
+        "- 答案完整性：1-5 分，是否覆盖标准答案关键点。",
+        "- 引用正确性：1-5 分，页码和引用片段是否直接支持答案。",
+        "- 复现计划可执行性：1-5 分，步骤是否可以实际运行或验证。",
+        "- 无依据结论：填写无、少量、较多，并说明原因。",
+        "",
+        "## Benchmark Cases",
+        "",
+    ]
+    for case in cases:
+        lines.extend(
+            [
+                f"### {case.case_id}",
+                "",
+                f"- Paper: {case.paper}",
+                f"- Question: {case.question}",
+                f"- Reference answer: {case.reference_answer}",
+                f"- Expected pages: {case.expected_pages or 'To be filled during evaluation'}",
+                f"- Expected terms: {', '.join(case.expected_terms) or 'To be filled'}",
+                f"- Repository: {case.repository_url or 'Not specified'}",
+                f"- Focus: {case.evaluation_focus or 'General answer quality'}",
+                "",
+                "| Mode | Raw answer | Answer completeness | Citation correctness | Plan executability | Unsupported conclusions | Human notes |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for mode in EVALUATION_MODES:
+            lines.append(
+                f"| {_escape(mode)} | 待填入原始输出 | 待评分（1-5） | 待评分（1-5） | 待评分（1-5） | 待判断 | 待填写 |"
+            )
+        lines.append("")
+    return "\n".join(lines)
+
+
 def save_evaluation_artifacts(
     output_dir: Path,
     markdown: str,
@@ -188,6 +300,62 @@ def save_evaluation_artifacts(
                     "human_notes": row.human_notes,
                 }
             )
+    return markdown_path, csv_path
+
+
+def save_benchmark_artifacts(
+    output_dir: Path,
+    markdown: str,
+    cases: list[BenchmarkCase],
+) -> tuple[Path, Path]:
+    """Save a multi-case benchmark protocol as Markdown and CSV."""
+    markdown_path = unique_output_path(output_dir, "benchmark-evaluation", ".md")
+    csv_path = unique_output_path(output_dir, "benchmark-evaluation", ".csv")
+    markdown_path.write_text(markdown, encoding="utf-8")
+
+    with csv_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "case_id",
+                "paper",
+                "question",
+                "reference_answer",
+                "expected_pages",
+                "expected_terms",
+                "repository_url",
+                "evaluation_focus",
+                "mode",
+                "raw_answer",
+                "answer_completeness",
+                "citation_correctness",
+                "plan_executability",
+                "unsupported_conclusions",
+                "human_notes",
+            ],
+        )
+        writer.writeheader()
+        for case in cases:
+            for mode in EVALUATION_MODES:
+                writer.writerow(
+                    {
+                        "case_id": case.case_id,
+                        "paper": case.paper,
+                        "question": case.question,
+                        "reference_answer": case.reference_answer,
+                        "expected_pages": case.expected_pages,
+                        "expected_terms": "; ".join(case.expected_terms),
+                        "repository_url": case.repository_url,
+                        "evaluation_focus": case.evaluation_focus,
+                        "mode": mode,
+                        "raw_answer": "",
+                        "answer_completeness": "",
+                        "citation_correctness": "",
+                        "plan_executability": "",
+                        "unsupported_conclusions": "",
+                        "human_notes": "",
+                    }
+                )
     return markdown_path, csv_path
 
 

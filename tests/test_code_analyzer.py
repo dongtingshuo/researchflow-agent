@@ -10,7 +10,7 @@ from src.code_analyzer.analyzer import (
     identify_key_files,
     read_key_file_contents,
 )
-from src.code_analyzer.loader import CodeLoadError, extract_zip_archive
+from src.code_analyzer.loader import CodeLoadError, extract_zip_archive, normalize_github_url
 
 
 class CodeAnalyzerTests(unittest.TestCase):
@@ -92,6 +92,70 @@ class CodeAnalyzerTests(unittest.TestCase):
             archive_path = tmp / "bad.zip"
             with zipfile.ZipFile(archive_path, "w") as archive:
                 archive.writestr("../escape.py", "print('bad')")
+
+            with self.assertRaises(CodeLoadError):
+                extract_zip_archive(archive_path, tmp / "workspaces")
+
+    def test_normalize_github_url_allows_only_safe_https_repo_urls(self):
+        self.assertEqual(
+            normalize_github_url("https://github.com/openai/CLIP"),
+            "https://github.com/openai/CLIP.git",
+        )
+        self.assertEqual(
+            normalize_github_url("https://www.github.com/openai/CLIP.git"),
+            "https://github.com/openai/CLIP.git",
+        )
+
+        unsafe_urls = [
+            "git@github.com:openai/CLIP.git",
+            "ssh://github.com/openai/CLIP.git",
+            "http://github.com/openai/CLIP",
+            "https://github.com.evil.example/openai/CLIP",
+            "https://github.com/openai/CLIP/tree/main",
+            "https://github.com/openai/CLIP?tab=readme",
+        ]
+        for url in unsafe_urls:
+            with self.subTest(url=url):
+                with self.assertRaises(CodeLoadError):
+                    normalize_github_url(url)
+
+    def test_extract_zip_rejects_too_many_members(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            archive_path = tmp / "many.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("a.py", "print(1)")
+                archive.writestr("b.py", "print(2)")
+
+            settings = Settings(
+                workspace_dir=tmp / "workspaces",
+                max_zip_members=1,
+            )
+            with self.assertRaises(CodeLoadError):
+                extract_zip_archive(archive_path, tmp / "workspaces", settings)
+
+    def test_extract_zip_rejects_large_uncompressed_size(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            archive_path = tmp / "large.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("large.txt", "x" * 20)
+
+            settings = Settings(
+                workspace_dir=tmp / "workspaces",
+                max_zip_total_bytes=10,
+            )
+            with self.assertRaises(CodeLoadError):
+                extract_zip_archive(archive_path, tmp / "workspaces", settings)
+
+    def test_extract_zip_rejects_symlinks(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            archive_path = tmp / "symlink.zip"
+            info = zipfile.ZipInfo("link")
+            info.external_attr = (0o120777 << 16)
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr(info, "target")
 
             with self.assertRaises(CodeLoadError):
                 extract_zip_archive(archive_path, tmp / "workspaces")

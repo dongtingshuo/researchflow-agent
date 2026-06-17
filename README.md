@@ -43,7 +43,23 @@ Use cases:
 | Report Writer | 生成包含背景、相关工作、方法、系统设计、实验步骤和结果模板的 Markdown 报告 | Generate Markdown reports with background, related work, methods, system design, experiments, and result templates |
 | Agent Workflow | 一键执行论文解析、RAG 构建、论文摘要、代码分析、计划生成、报告生成和 Verifier 检查 | Run the full pipeline with one click: paper parsing, RAG indexing, summary, code analysis, planning, reporting, and verification |
 | Verifier | 区分论文证据、代码证据、模型推断、缺少证据、人工确认项和潜在幻觉 | Separate paper evidence, code evidence, model inference, missing evidence, human-review items, and possible hallucinations |
-| Evaluation | 生成普通 RAG、Agent 分步骤、Agent + Verifier 三种模式的人工评分表 | Generate manual evaluation sheets for ordinary RAG, step-by-step Agent, and Agent + Verifier outputs |
+| Evaluation | 生成普通 RAG、Agent 分步骤、Agent + Verifier 三种模式的人工评分表，并提供固定 demo benchmark | Generate manual evaluation sheets and a fixed demo benchmark for ordinary RAG, step-by-step Agent, and Agent + Verifier outputs |
+
+## 当前质量状态 / Current Quality Status
+
+当前版本已经完成可展示 MVP，并通过真实论文 smoke tests 验证了核心链路：
+
+- CLIP 数量题：回答 `400 million`，Top-1 引用为 Page 2，引用片段包含 `400 million (image, text) pairs`。
+- ReAct benchmark 题：保留 HotPotQA、Fever、ALFWorld、WebShop 等原始 benchmark 名称。
+- RAG formulation 题：区分 RAG-Sequence 和 RAG-Token，并引用 same-document / different-document 证据。
+- 单元测试：`40 passed`。
+
+The current version is a portfolio-ready MVP validated with real-paper smoke tests:
+
+- CLIP quantity question: answers `400 million`, with Page 2 as the top citation and a direct evidence snippet.
+- ReAct benchmark question: preserves HotPotQA, Fever, ALFWorld, and WebShop.
+- RAG formulation question: distinguishes RAG-Sequence and RAG-Token with grounded evidence.
+- Unit tests: `40 passed`.
 
 ## 界面截图 / Screenshots
 
@@ -109,6 +125,8 @@ The system uses a modular Python architecture. Paper parsing, RAG, code analysis
 - Gradio
 - PyMuPDF / pdfplumber
 - sentence-transformers
+- Hybrid dense + lexical retrieval
+- Optional cross-encoder reranker
 - Local JSON vector store; Chroma / FAISS dependencies are included for extension
 - OpenAI-compatible LLM API
 - GitPython / subprocess
@@ -198,9 +216,15 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ALLOW_HASH_EMBEDDING_FALLBACK=true
+RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+ENABLE_CROSS_ENCODER_RERANKER=true
 MAX_PAPER_CHUNK_TOKENS=220
 CHUNK_OVERLAP_TOKENS=40
-TOP_K_RETRIEVAL=5
+TOP_K_RETRIEVAL=8
+RERANKER_CANDIDATE_MULTIPLIER=4
+GIT_CLONE_TIMEOUT_SECONDS=120
+MAX_ZIP_MEMBERS=4000
+MAX_ZIP_TOTAL_BYTES=150000000
 ```
 
 如果没有配置 LLM API key，系统仍可运行离线模板和本地检索流程，但 LLM 总结质量会受限。
@@ -287,6 +311,62 @@ Generated files:
 - `data/outputs/evaluation-*.md`
 - `data/outputs/evaluation-*.csv`
 
+### 5. Demo Benchmark / 固定演示评测集
+
+项目提供固定 demo benchmark，便于在课程展示、项目经历材料或答辩时重复验证：
+
+- `examples/evaluation_benchmark.json`: 三个固定问题，覆盖 CLIP、ReAct、RAG。
+- `examples/demo_workflows.md`: 四个推荐演示流程。
+- `examples/demo_results.md`: 当前版本的真实论文 smoke test 结果摘要。
+- `docs/project_showcase.md`: 项目展示文档，可用于课程答辩、简历项目经历或作品集说明。
+
+The project includes a fixed demo benchmark for repeatable portfolio demonstrations:
+
+- `examples/evaluation_benchmark.json`: three fixed questions covering CLIP, ReAct, and RAG.
+- `examples/demo_workflows.md`: recommended demo workflows.
+- `examples/demo_results.md`: current real-paper smoke-test summary.
+- `docs/project_showcase.md`: portfolio-style project showcase document.
+
+在 Gradio 的 **实验评测** Tab 中点击 **Generate Demo Benchmark**，可导出：
+
+- `data/outputs/benchmark-evaluation-*.md`
+- `data/outputs/benchmark-evaluation-*.csv`
+
+Click **Generate Demo Benchmark** in the **实验评测** tab to export Markdown and CSV benchmark sheets.
+
+也可以使用一键脚本生成 demo benchmark 结果：
+
+```bash
+conda activate researchflow
+python scripts/run_demo_benchmark.py
+```
+
+默认不会调用 LLM，适合本地快速验证和 CI 环境。若需要使用 `.env` 中配置的 OpenAI-compatible API：
+
+```bash
+python scripts/run_demo_benchmark.py --use-llm
+```
+
+The CLI script runs locally by default without LLM calls. Add `--use-llm` to use the configured OpenAI-compatible API.
+
+## 安全设计 / Security Notes
+
+ResearchFlow-Agent 面向本地科研训练场景，但仍做了基础安全限制：
+
+- GitHub clone 只接受标准 `https://github.com/owner/repo` 公共仓库 URL。
+- 拒绝 SSH、`git@`、非 GitHub 域名、带 query/fragment 的 URL 和伪造域名。
+- clone 使用 shallow clone，并配置超时。
+- zip 上传会检查路径穿越、绝对路径、符号链接、文件数量和解压后总体积。
+- `.env`、上传文件、向量库、工作区和输出文件默认不提交到 Git。
+
+ResearchFlow-Agent is intended for local research training and includes basic safety controls:
+
+- GitHub cloning accepts only public HTTPS URLs in the `https://github.com/owner/repo` form.
+- SSH, `git@`, non-GitHub hosts, query/fragment URLs, and spoofed domains are rejected.
+- Cloning uses shallow clone with timeout.
+- Zip uploads are checked for path traversal, absolute paths, symlinks, member count, and total extracted size.
+- `.env`, uploads, vector stores, workspaces, and outputs are ignored by Git by default.
+
 ## Verifier 设计 / Verifier Design
 
 Verifier 不声称生成内容 100% 正确。它的作用是帮助用户区分证据、推断和风险。
@@ -320,27 +400,35 @@ conda activate researchflow
 pytest tests
 ```
 
+项目包含 GitHub Actions CI：`.github/workflows/tests.yml` 会在 push 和 pull request 时安装依赖并运行测试。
+
+The repository includes GitHub Actions CI in `.github/workflows/tests.yml`, which installs dependencies and runs tests on push and pull request events.
+
 当前测试覆盖：
 
 - PDF 解析错误处理
 - chunk 切分
 - embedding fallback 和本地向量检索
+- hybrid retrieval、cross-encoder reranker 和 query-aware 引用片段
 - 代码仓库分析
+- GitHub URL 与 zip 上传安全边界
 - 实验计划与报告生成
 - 完整 Agent Workflow 成功与失败路径
 - Verifier 证据归因与不确定性输出
-- 实验评测表 Markdown / CSV 导出
+- 实验评测表与 demo benchmark Markdown / CSV 导出
 
 Current tests cover:
 
 - PDF parser error handling
 - Chunking
 - Embedding fallback and local vector retrieval
+- Hybrid retrieval, cross-encoder reranking, and query-aware citation snippets
 - Code repository analysis
+- GitHub URL and zip-upload security boundaries
 - Experiment planning and report writing
 - Full Agent Workflow success and failure paths
 - Verifier evidence attribution and uncertainty reporting
-- Evaluation Markdown / CSV export
+- Evaluation and demo benchmark Markdown / CSV export
 
 ## 当前状态 / Current Status
 
@@ -355,7 +443,7 @@ ResearchFlow-Agent currently provides a complete runnable research-training MVP:
 - 更完整的 Chroma / FAISS backend adapter
 - 自动读取论文标题、作者、摘要和章节结构
 - 评测结果可视化
-- 示例论文与示例仓库 demo workflow
+- 自动运行 benchmark 并生成汇总图表
 
 Planned improvements:
 
@@ -364,11 +452,10 @@ Planned improvements:
 - Complete Chroma / FAISS backend adapters
 - Automatic paper title, author, abstract, and section extraction
 - Evaluation result visualization
-- Demo workflows with sample papers and repositories
+- Automatic benchmark execution with summary charts
 
 ## 声明 / Notes
 
 本项目用于科研训练和项目展示辅助，不替代真实科研判断。论文事实、实验指标、复现结果和报告结论都应由使用者进行人工复核。
 
 This project is intended to support research training and project presentation. It does not replace human research judgment. Paper facts, experiment metrics, reproduction results, and report conclusions should be manually verified.
-

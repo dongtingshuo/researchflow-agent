@@ -9,39 +9,66 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+from config import Settings
+
+
+DEFAULT_GIT_CLONE_TIMEOUT_SECONDS = 120
+DEFAULT_MAX_ZIP_MEMBERS = 4000
+DEFAULT_MAX_ZIP_TOTAL_BYTES = 150_000_000
+
 
 class CodeLoadError(RuntimeError):
     """Raised when a repository or archive cannot be loaded."""
 
 
-def clone_github_repository(repo_url: str, workspace_dir: Path) -> Path:
+def clone_github_repository(
+    repo_url: str,
+    workspace_dir: Path,
+    settings: Settings | None = None,
+) -> Path:
     """Clone a GitHub repository into the workspace directory."""
-    if not repo_url.strip():
-        raise CodeLoadError("Please provide a GitHub repository URL.")
-    parsed = urlparse(repo_url)
-    if parsed.scheme not in {"http", "https", "git", "ssh"} and not repo_url.startswith(
-        "git@"
-    ):
-        raise CodeLoadError("Only GitHub repository URLs are supported.")
-    if "github.com" not in repo_url:
-        raise CodeLoadError("The repository URL must point to github.com.")
+    normalized_url = normalize_github_url(repo_url)
+    timeout = (
+        settings.git_clone_timeout_seconds
+        if settings is not None
+        else DEFAULT_GIT_CLONE_TIMEOUT_SECONDS
+    )
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
-    repo_name = _repo_name_from_url(repo_url)
+    repo_name = _repo_name_from_url(normalized_url)
     target_dir = _unique_path(workspace_dir / repo_name)
 
     try:
         from git import Repo  # type: ignore
 
-        Repo.clone_from(repo_url, target_dir)
+        Repo.clone_from(
+            normalized_url,
+            target_dir,
+            multi_options=["--depth", "1", "--single-branch"],
+        )
     except Exception:
         try:
             subprocess.run(
-                ["git", "clone", "--depth", "1", repo_url, str(target_dir)],
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--single-branch",
+                    normalized_url,
+                    str(target_dir),
+                ],
                 check=True,
                 capture_output=True,
                 text=True,
+                timeout=timeout,
             )
+        except subprocess.TimeoutExpired as exc:
+            if target_dir.exists():
+                shutil.rmtree(target_dir)
+            raise CodeLoadError(
+                f"Repository clone timed out after {timeout} seconds."
+            ) from exc
         except Exception as exc:
             if target_dir.exists():
                 shutil.rmtree(target_dir)
@@ -50,7 +77,11 @@ def clone_github_repository(repo_url: str, workspace_dir: Path) -> Path:
     return target_dir
 
 
-def extract_zip_archive(zip_path: str | Path, workspace_dir: Path) -> Path:
+def extract_zip_archive(
+    zip_path: str | Path,
+    workspace_dir: Path,
+    settings: Settings | None = None,
+) -> Path:
     """Safely extract an uploaded zip archive into the workspace directory."""
     source = Path(zip_path)
     if not source.exists():
@@ -64,11 +95,24 @@ def extract_zip_archive(zip_path: str | Path, workspace_dir: Path) -> Path:
 
     try:
         with zipfile.ZipFile(source) as archive:
+            _validate_zip_archive(
+                archive,
+                target_dir,
+                max_members=(
+                    settings.max_zip_members
+                    if settings is not None
+                    else DEFAULT_MAX_ZIP_MEMBERS
+                ),
+                max_total_bytes=(
+                    settings.max_zip_total_bytes
+                    if settings is not None
+                    else DEFAULT_MAX_ZIP_TOTAL_BYTES
+                ),
+            )
             for member in archive.infolist():
-                member_path = target_dir / member.filename
-                resolved = member_path.resolve()
-                if not str(resolved).startswith(str(target_dir.resolve())):
-                    raise CodeLoadError("Unsafe zip path detected.")
+                if _is_ignored_zip_member(member):
+                    continue
+                resolved = _safe_zip_member_path(target_dir, member.filename)
                 if member.is_dir():
                     resolved.mkdir(parents=True, exist_ok=True)
                 else:
@@ -83,6 +127,37 @@ def extract_zip_archive(zip_path: str | Path, workspace_dir: Path) -> Path:
         raise
 
     return _collapse_single_root(target_dir)
+
+
+def normalize_github_url(repo_url: str) -> str:
+    """Validate and normalize a public GitHub repository URL."""
+    raw_url = repo_url.strip()
+    if not raw_url:
+        raise CodeLoadError("Please provide a GitHub repository URL.")
+    if raw_url.startswith("git@") or raw_url.startswith("ssh://"):
+        raise CodeLoadError(
+            "For safety, only public HTTPS GitHub URLs are supported."
+        )
+
+    parsed = urlparse(raw_url)
+    if parsed.scheme != "https":
+        raise CodeLoadError("Only HTTPS GitHub repository URLs are supported.")
+    if parsed.netloc.lower() not in {"github.com", "www.github.com"}:
+        raise CodeLoadError("The repository URL must point to github.com.")
+    if parsed.query or parsed.fragment:
+        raise CodeLoadError("Repository URLs must not contain query strings or fragments.")
+
+    parts = [part for part in parsed.path.strip("/").split("/") if part]
+    if len(parts) != 2:
+        raise CodeLoadError("Use a repository URL in the form https://github.com/owner/repo.")
+    owner, repo = parts
+    name_pattern = re.compile(r"^[A-Za-z0-9_.-]+$")
+    if not name_pattern.fullmatch(owner) or not name_pattern.fullmatch(repo):
+        raise CodeLoadError("Repository owner and name contain unsupported characters.")
+    repo = repo.removesuffix(".git")
+    if repo in {"", ".", ".."} or owner in {"", ".", ".."}:
+        raise CodeLoadError("Repository owner and name are invalid.")
+    return f"https://github.com/{owner}/{repo}.git"
 
 
 def _repo_name_from_url(repo_url: str) -> str:
@@ -106,6 +181,55 @@ def _unique_path(path: Path) -> Path:
         if not candidate.exists():
             return candidate
     raise CodeLoadError(f"Could not allocate a workspace path for {path.name}.")
+
+
+def _validate_zip_archive(
+    archive: zipfile.ZipFile,
+    target_dir: Path,
+    max_members: int,
+    max_total_bytes: int,
+) -> None:
+    members = archive.infolist()
+    if len(members) > max_members:
+        raise CodeLoadError(
+            f"Zip archive contains too many files ({len(members)} > {max_members})."
+        )
+
+    total_size = 0
+    for member in members:
+        if _is_ignored_zip_member(member):
+            continue
+        if _is_zip_symlink(member):
+            raise CodeLoadError("Unsafe zip symlink detected.")
+        _safe_zip_member_path(target_dir, member.filename)
+        total_size += member.file_size
+        if total_size > max_total_bytes:
+            raise CodeLoadError(
+                f"Zip archive is too large after extraction ({total_size} bytes)."
+            )
+
+
+def _safe_zip_member_path(target_dir: Path, member_name: str) -> Path:
+    if not member_name or "\x00" in member_name:
+        raise CodeLoadError("Unsafe zip path detected.")
+    member_path = Path(member_name)
+    if member_path.is_absolute():
+        raise CodeLoadError("Unsafe zip path detected.")
+    resolved = (target_dir / member_path).resolve()
+    try:
+        resolved.relative_to(target_dir.resolve())
+    except ValueError as exc:
+        raise CodeLoadError("Unsafe zip path detected.") from exc
+    return resolved
+
+
+def _is_zip_symlink(member: zipfile.ZipInfo) -> bool:
+    mode = member.external_attr >> 16
+    return (mode & 0o170000) == 0o120000
+
+
+def _is_ignored_zip_member(member: zipfile.ZipInfo) -> bool:
+    return member.filename.startswith("__MACOSX/") or member.filename.endswith(".DS_Store")
 
 
 def _collapse_single_root(path: Path) -> Path:

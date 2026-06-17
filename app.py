@@ -9,7 +9,11 @@ from config import get_settings
 from src.agent import generate_experiment_plan, run_full_agent_workflow
 from src.code_analyzer import analyze_github_repository, analyze_zip_archive
 from src.code_analyzer.models import CodeAnalysisResult
-from src.evaluation import generate_evaluation_table, verify_workflow_outputs
+from src.evaluation import (
+    generate_benchmark_template,
+    generate_evaluation_table,
+    verify_workflow_outputs,
+)
 from src.report import generate_markdown_report
 from src.rag.qa import PaperRAGService
 
@@ -228,6 +232,16 @@ def create_evaluation_sheet(
         return f"Evaluation generation failed: {exc}", "", None, None
 
 
+def create_demo_benchmark_template() -> Tuple[str, str, Optional[str], Optional[str]]:
+    """Generate the default multi-case demo benchmark sheet."""
+    try:
+        result = generate_benchmark_template(get_settings())
+        status = f"Demo benchmark saved to `{result.markdown_path}` and `{result.csv_path}`"
+        return status, result.markdown, str(result.markdown_path), str(result.csv_path)
+    except Exception as exc:
+        return f"Benchmark generation failed: {exc}", "", None, None
+
+
 def build_app():
     """Build the Gradio Blocks UI."""
     try:
@@ -425,7 +439,9 @@ def build_app():
                     label="Agent + Verifier 回答（可留空，系统会基于当前内容生成 Verifier 记录）",
                     lines=5,
                 )
-                evaluation_button = gr.Button("Generate Evaluation Sheet", variant="primary")
+                with gr.Row():
+                    evaluation_button = gr.Button("Generate Evaluation Sheet", variant="primary")
+                    benchmark_button = gr.Button("Generate Demo Benchmark")
                 evaluation_status = gr.Markdown(label="Status")
                 evaluation_markdown = gr.Markdown(label="Evaluation Markdown")
                 with gr.Row():
@@ -445,6 +461,16 @@ def build_app():
                         code_analysis_state,
                         plan_state,
                     ],
+                    outputs=[
+                        evaluation_status,
+                        evaluation_markdown,
+                        evaluation_markdown_file,
+                        evaluation_csv_file,
+                    ],
+                )
+                benchmark_button.click(
+                    fn=create_demo_benchmark_template,
+                    inputs=[],
                     outputs=[
                         evaluation_status,
                         evaluation_markdown,

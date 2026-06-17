@@ -72,7 +72,7 @@ SUMMARY_SECTIONS = [
 
 def analyze_github_repository(repo_url: str, settings: Settings) -> CodeAnalysisResult:
     """Clone and analyze a GitHub repository."""
-    workspace = clone_github_repository(repo_url, settings.workspace_dir)
+    workspace = clone_github_repository(repo_url, settings.workspace_dir, settings)
     return analyze_codebase(
         workspace,
         source_type="github",
@@ -83,7 +83,7 @@ def analyze_github_repository(repo_url: str, settings: Settings) -> CodeAnalysis
 
 def analyze_zip_archive(zip_path: str | Path, settings: Settings) -> CodeAnalysisResult:
     """Extract and analyze an uploaded zip archive."""
-    workspace = extract_zip_archive(zip_path, settings.workspace_dir)
+    workspace = extract_zip_archive(zip_path, settings.workspace_dir, settings)
     return analyze_codebase(
         workspace,
         source_type="zip",

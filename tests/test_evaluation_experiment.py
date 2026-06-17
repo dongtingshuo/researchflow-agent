@@ -4,7 +4,13 @@ import unittest
 from pathlib import Path
 
 from config import Settings
-from src.evaluation import EVALUATION_METRICS, EVALUATION_MODES, generate_evaluation_table
+from src.evaluation import (
+    DEFAULT_BENCHMARK_CASES,
+    EVALUATION_METRICS,
+    EVALUATION_MODES,
+    generate_benchmark_template,
+    generate_evaluation_table,
+)
 
 
 class ExperimentEvaluationTests(unittest.TestCase):
@@ -45,6 +51,26 @@ class ExperimentEvaluationTests(unittest.TestCase):
 
         self.assertNotEqual(first.markdown_path, second.markdown_path)
         self.assertNotEqual(first.csv_path, second.csv_path)
+
+    def test_generate_benchmark_template_saves_multi_case_protocol(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings = Settings(output_dir=Path(tmpdir) / "outputs")
+            result = generate_benchmark_template(settings=settings)
+
+            self.assertTrue(result.markdown_path.exists())
+            self.assertTrue(result.csv_path.exists())
+            self.assertIn("ResearchFlow-Agent Demo Benchmark", result.markdown)
+            self.assertIn("clip-data-scale", result.markdown)
+            self.assertIn("react-benchmarks", result.markdown)
+            self.assertIn("rag-formulations", result.markdown)
+
+            with result.csv_path.open("r", encoding="utf-8") as file:
+                rows = list(csv.DictReader(file))
+
+        self.assertEqual(len(rows), len(DEFAULT_BENCHMARK_CASES) * len(EVALUATION_MODES))
+        self.assertEqual(rows[0]["case_id"], "clip-data-scale")
+        self.assertIn("reference_answer", rows[0])
+        self.assertIn("expected_pages", rows[0])
 
 
 if __name__ == "__main__":
