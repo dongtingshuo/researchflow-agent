@@ -13,7 +13,7 @@ ResearchFlow-Agent is a professional AI Agent system for research paper reading,
 
 The GIF above shows the four core views: paper QA, code analysis, full Agent workflow, and experiment evaluation.
 
-## 项目定位 / Project Positioning
+## Project Positioning / 项目定位
 
 ResearchFlow-Agent 不是普通聊天机器人，而是一个围绕“论文 + 代码 + 复现实验”的科研工作流 Agent。它强调可解释过程、可追溯证据、可保存输出和人工可复核的评测记录。
 
@@ -35,7 +35,7 @@ Use cases:
 - Markdown project report generation
 - Evaluation of RAG, Agent, and Agent + Verifier workflows
 
-## 核心功能 / Core Features
+## Core Features / 核心功能
 
 | 模块 | 中文说明 | English Description |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ The evaluation module compares ordinary RAG, step-by-step Agent, and Agent + Ver
 
 ![Experiment Evaluation Tab](docs/images/evaluation-tab.jpg)
 
-## 系统架构 / System Architecture
+## System Architecture / 系统架构
 
 ```mermaid
 flowchart LR
@@ -121,7 +121,7 @@ flowchart LR
 
 The system uses a modular Python architecture. Paper parsing, RAG, code analysis, agent orchestration, report generation, verification, and evaluation are separated for testability and extensibility.
 
-## 技术栈 / Tech Stack
+## Tech Stack / 技术栈
 
 - Python 3.10+
 - Gradio
@@ -188,7 +188,7 @@ Key directories:
 - `data/outputs`: generated plans, reports, evaluation sheets, and workflow summaries
 - `docs/images`: README screenshot assets
 
-## 安装与运行 / Installation and Usage
+## Installation / 安装
 
 建议使用独立 conda 环境，不要安装到 `base` 环境。
 
@@ -202,11 +202,19 @@ cp .env.example .env
 python app.py
 ```
 
+运行应用：
+
+Run the application:
+
+```bash
+python app.py
+```
+
 运行后打开终端输出中的本地 Gradio URL。
 
 After starting the app, open the local Gradio URL printed in the terminal.
 
-## 配置说明 / Configuration
+## Configuration / 配置
 
 复制 `.env.example` 为 `.env` 后可配置模型和运行参数。
 
@@ -233,7 +241,7 @@ MAX_ZIP_TOTAL_BYTES=150000000
 
 If no LLM API key is configured, the system can still run local retrieval and deterministic templates, but LLM-based summaries will be limited.
 
-## 使用流程 / Workflows
+## Usage / 使用流程
 
 ### 1. 论文问答 / Paper QA
 
@@ -319,14 +327,14 @@ Generated files:
 
 - `examples/evaluation_benchmark.json`: 三个固定问题，覆盖 CLIP、ReAct、RAG。
 - `examples/validation_workflows.md`: 四个推荐验证流程。
-- `examples/validation_results.md`: 当前版本的真实论文 smoke test 结果摘要。
+- `examples/validation_results.md`: 当前版本的本地验证记录与人工复核建议。
 - `docs/technical_overview.md`: 技术概览文档，说明系统架构、核心模块、验证结果和局限性。
 
 The project includes a fixed evaluation benchmark for repeatable validation:
 
 - `examples/evaluation_benchmark.json`: three fixed questions covering CLIP, ReAct, and RAG.
 - `examples/validation_workflows.md`: recommended validation workflows.
-- `examples/validation_results.md`: current real-paper smoke-test summary.
+- `examples/validation_results.md`: current local validation record and human-review checklist.
 - `docs/technical_overview.md`: technical overview covering architecture, modules, validation results, and limitations.
 
 在 Gradio 的 **实验评测** Tab 中点击 **Generate Evaluation Benchmark**，可导出：
@@ -351,9 +359,42 @@ python scripts/run_evaluation_benchmark.py --use-llm
 
 The CLI script runs locally by default without LLM calls. Add `--use-llm` to use the configured OpenAI-compatible API.
 
-## 安全设计 / Security Notes
+## Evaluation and Validation / 评测与验证
 
-ResearchFlow-Agent 面向本地科研训练场景，但仍做了基础安全限制：
+ResearchFlow-Agent provides manual evaluation templates and fixed validation questions. These artifacts are intended for human-reviewable evaluation, not for replacing manual judgment.
+
+ResearchFlow-Agent 提供人工评测模板和固定验证问题。这些文件用于人工可复核评测，不用于替代人工判断。
+
+Related files:
+
+相关文件：
+
+- `docs/evaluation_report.md`: evaluation goals, modes, metrics, table template, sample result, and limitations.
+- `docs/demo_guide.md`: professional walkthrough script for explaining the main workflow.
+- `docs/project_summary.md`: concise technical summary and current limitations.
+- `docs/technical_overview.md`: architecture, modules, engineering notes, validation status, and roadmap.
+- `examples/paper_eval_questions.json`: 5 paper samples with 25 evaluation questions.
+- `examples/evaluation_benchmark.json`: compact fixed benchmark for CLIP, ReAct, and RAG questions.
+
+Generate a manual Markdown/CSV evaluation template:
+
+生成手动 Markdown/CSV 评测模板：
+
+```bash
+python scripts/run_manual_evaluation_template.py
+```
+
+Generate the compact evaluation benchmark result template:
+
+生成紧凑评测 benchmark 结果模板：
+
+```bash
+python scripts/run_evaluation_benchmark.py
+```
+
+## Security Notes / 安全设计
+
+ResearchFlow-Agent 面向本地科研工作流，但仍做了基础安全限制：
 
 - GitHub clone 只接受标准 `https://github.com/owner/repo` 公共仓库 URL。
 - 拒绝 SSH、`git@`、非 GitHub 域名、带 query/fragment 的 URL 和伪造域名。
@@ -369,7 +410,7 @@ ResearchFlow-Agent is intended for local research training and includes basic sa
 - Zip uploads are checked for path traversal, absolute paths, symlinks, member count, and total extracted size.
 - `.env`, uploads, vector stores, workspaces, and outputs are ignored by Git by default.
 
-## Verifier 设计 / Verifier Design
+## Verifier Design / Verifier 设计
 
 Verifier 不声称生成内容 100% 正确。它的作用是帮助用户区分证据、推断和风险。
 
@@ -395,7 +436,22 @@ The verifier outputs seven categories:
 6. Possible hallucinations
 7. Improvement suggestions
 
-## 测试 / Testing
+## Known Limitations / 已知局限
+
+- ResearchFlow-Agent does not automatically run real training experiments.
+- ResearchFlow-Agent 不会自动运行真实训练实验。
+- Verifier provides evidence attribution and uncertainty classification, but it does not guarantee factual correctness.
+- Verifier 提供证据归因和不确定性分类，但不保证事实正确。
+- Evaluation artifacts are designed for human review and require manual scoring.
+- 评测文件面向人工复核，仍需要人工评分。
+- PDF page numbers come from parser page order and should be checked against the original PDF viewer when exact page mapping matters.
+- PDF 页码来自解析器页序；需要严格页码映射时，应与原 PDF 阅读器核对。
+- If hashing fallback is used, retrieval quality may be weaker than real semantic embeddings.
+- 如果使用 hashing fallback，检索质量可能弱于真实语义 embedding。
+- Chroma / FAISS are available as extension directions, while the current main implementation uses a local JSON vector store.
+- Chroma / FAISS 是扩展方向，当前主实现仍使用本地 JSON vector store。
+
+## Testing / 测试
 
 ```bash
 conda activate researchflow
@@ -434,11 +490,11 @@ Current tests cover:
 
 ## 当前状态 / Current Status
 
-ResearchFlow-Agent 已实现一个完整可运行的科研训练 MVP：论文 RAG、代码分析、实验计划、报告生成、Verifier、实验评测和 Gradio UI 均已具备基础功能。
+ResearchFlow-Agent 已实现一个可运行的科研工作流 MVP：论文 RAG、代码分析、实验计划、报告生成、Verifier、实验评测和 Gradio UI 均已具备基础功能。
 
-ResearchFlow-Agent currently provides a complete runnable research-training MVP: paper RAG, code analysis, experiment planning, report writing, verifier, evaluation sheets, and Gradio UI are implemented.
+ResearchFlow-Agent currently provides a runnable research workflow MVP: paper RAG, code analysis, experiment planning, report writing, verifier, evaluation sheets, and Gradio UI are implemented.
 
-## 后续计划 / Roadmap
+## Roadmap / 后续计划
 
 - SQLite 会话历史与项目级持久化
 - 更严格的 citation-level fact checking

@@ -6,7 +6,7 @@ from src.rag.chunking import chunk_pages, tokenize
 
 class ChunkingTests(unittest.TestCase):
     def test_tokenize_handles_english_and_chinese(self):
-        tokens = tokenize("RAG improves 论文阅读.")
+        tokens = tokenize("RAG helps 论文阅读.")
 
         self.assertIn("RAG", tokens)
         self.assertIn("论文", "".join(tokens))

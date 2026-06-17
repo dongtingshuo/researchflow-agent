@@ -1,0 +1,217 @@
+[
+  {
+    "paper_id": "clip",
+    "paper_title": "CLIP: Learning Transferable Visual Models From Natural Language Supervision",
+    "paper_area": "computer_vision_multimodal_learning",
+    "optional_repo_url": "https://github.com/openai/CLIP",
+    "questions": [
+      {
+        "question_id": "clip_method",
+        "question": "What is the main learning method used by CLIP?",
+        "question_type": "method",
+        "expected_evidence_type": "paper_method_description",
+        "scoring_note": "Check whether the answer mentions contrastive learning between image and text representations with paper evidence."
+      },
+      {
+        "question_id": "clip_dataset",
+        "question": "What training data scale is described for CLIP?",
+        "question_type": "dataset",
+        "expected_evidence_type": "paper_dataset_description",
+        "scoring_note": "Check whether the answer cites the reported image-text pair scale and does not invent dataset details."
+      },
+      {
+        "question_id": "clip_metric",
+        "question": "Which evaluation metric or benchmark evidence is used to discuss CLIP zero-shot performance?",
+        "question_type": "metric",
+        "expected_evidence_type": "paper_metric_or_benchmark",
+        "scoring_note": "Check whether the answer grounds metrics or benchmarks in retrieved paper snippets."
+      },
+      {
+        "question_id": "clip_result",
+        "question": "What result is reported for CLIP zero-shot transfer?",
+        "question_type": "result",
+        "expected_evidence_type": "paper_result_statement",
+        "scoring_note": "Check whether the answer cites the reported result and avoids unsupported comparisons."
+      },
+      {
+        "question_id": "clip_limitation",
+        "question": "What limitation or risk does the CLIP paper discuss?",
+        "question_type": "limitation",
+        "expected_evidence_type": "paper_limitation_statement",
+        "scoring_note": "Check whether the answer distinguishes paper-stated limitations from model inference."
+      }
+    ]
+  },
+  {
+    "paper_id": "react",
+    "paper_title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "paper_area": "agent_reasoning",
+    "optional_repo_url": "https://github.com/ysymyth/ReAct",
+    "questions": [
+      {
+        "question_id": "react_method",
+        "question": "What is the core ReAct method?",
+        "question_type": "method",
+        "expected_evidence_type": "paper_method_description",
+        "scoring_note": "Check whether the answer explains reasoning and acting interleaving with direct paper evidence."
+      },
+      {
+        "question_id": "react_dataset",
+        "question": "Which tasks or benchmarks are used to evaluate ReAct?",
+        "question_type": "dataset",
+        "expected_evidence_type": "paper_task_or_benchmark_list",
+        "scoring_note": "Check whether named tasks such as HotPotQA, Fever, ALFWorld, or WebShop are preserved when supported."
+      },
+      {
+        "question_id": "react_metric",
+        "question": "Which evaluation signals are used to compare ReAct with baselines?",
+        "question_type": "metric",
+        "expected_evidence_type": "paper_metric_or_comparison",
+        "scoring_note": "Check whether the answer cites metrics or comparison criteria from the paper."
+      },
+      {
+        "question_id": "react_result",
+        "question": "What performance or qualitative result is reported for ReAct?",
+        "question_type": "result",
+        "expected_evidence_type": "paper_result_statement",
+        "scoring_note": "Check whether the answer separates reported results from broader interpretation."
+      },
+      {
+        "question_id": "react_limitation",
+        "question": "What limitation or failure mode is discussed for ReAct?",
+        "question_type": "limitation",
+        "expected_evidence_type": "paper_limitation_statement",
+        "scoring_note": "Check whether uncertainty is preserved when the paper evidence is limited."
+      }
+    ]
+  },
+  {
+    "paper_id": "rag",
+    "paper_title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "paper_area": "retrieval_augmented_generation",
+    "optional_repo_url": "",
+    "questions": [
+      {
+        "question_id": "rag_method",
+        "question": "What are the two RAG formulations described in the paper?",
+        "question_type": "method",
+        "expected_evidence_type": "paper_method_description",
+        "scoring_note": "Check whether the answer distinguishes RAG-Sequence and RAG-Token using paper evidence."
+      },
+      {
+        "question_id": "rag_dataset",
+        "question": "Which knowledge source or retrieval corpus is described for RAG?",
+        "question_type": "dataset",
+        "expected_evidence_type": "paper_retrieval_corpus_description",
+        "scoring_note": "Check whether the answer cites the corpus or index description without inventing details."
+      },
+      {
+        "question_id": "rag_metric",
+        "question": "Which evaluation metrics or task scores are used for RAG?",
+        "question_type": "metric",
+        "expected_evidence_type": "paper_metric_or_task_score",
+        "scoring_note": "Check whether metric names or task scores are supported by citations."
+      },
+      {
+        "question_id": "rag_result",
+        "question": "What result does the paper report for knowledge-intensive tasks?",
+        "question_type": "result",
+        "expected_evidence_type": "paper_result_statement",
+        "scoring_note": "Check whether the answer cites task-specific reported results and avoids overgeneralization."
+      },
+      {
+        "question_id": "rag_limitation",
+        "question": "What limitation or open issue does the paper imply or state for RAG?",
+        "question_type": "limitation",
+        "expected_evidence_type": "paper_limitation_or_uncertainty",
+        "scoring_note": "Check whether the answer labels inferred limitations as inference when direct evidence is missing."
+      }
+    ]
+  },
+  {
+    "paper_id": "sam",
+    "paper_title": "Segment Anything",
+    "paper_area": "computer_vision_segmentation",
+    "optional_repo_url": "https://github.com/facebookresearch/segment-anything",
+    "questions": [
+      {
+        "question_id": "sam_method",
+        "question": "What is the main method proposed by Segment Anything?",
+        "question_type": "method",
+        "expected_evidence_type": "paper_method_description",
+        "scoring_note": "Check whether the answer describes promptable segmentation with evidence."
+      },
+      {
+        "question_id": "sam_dataset",
+        "question": "What dataset or data engine is described for Segment Anything?",
+        "question_type": "dataset",
+        "expected_evidence_type": "paper_dataset_description",
+        "scoring_note": "Check whether dataset scale or construction details are cited."
+      },
+      {
+        "question_id": "sam_metric",
+        "question": "Which metric or evaluation setting is used for segmentation quality?",
+        "question_type": "metric",
+        "expected_evidence_type": "paper_metric_or_evaluation_setting",
+        "scoring_note": "Check whether the answer cites the evaluation setup rather than assuming a generic metric."
+      },
+      {
+        "question_id": "sam_result",
+        "question": "What result is reported for zero-shot or promptable segmentation?",
+        "question_type": "result",
+        "expected_evidence_type": "paper_result_statement",
+        "scoring_note": "Check whether reported results are tied to specific tasks or settings."
+      },
+      {
+        "question_id": "sam_limitation",
+        "question": "What limitation does Segment Anything discuss?",
+        "question_type": "limitation",
+        "expected_evidence_type": "paper_limitation_statement",
+        "scoring_note": "Check whether the answer avoids claiming broader capability than the paper supports."
+      }
+    ]
+  },
+  {
+    "paper_id": "vit",
+    "paper_title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale",
+    "paper_area": "computer_vision_transformers",
+    "optional_repo_url": "",
+    "questions": [
+      {
+        "question_id": "vit_method",
+        "question": "What is the main method used by Vision Transformer?",
+        "question_type": "method",
+        "expected_evidence_type": "paper_method_description",
+        "scoring_note": "Check whether the answer explains image patches and transformer encoder use with evidence."
+      },
+      {
+        "question_id": "vit_dataset",
+        "question": "Which training datasets are described for Vision Transformer?",
+        "question_type": "dataset",
+        "expected_evidence_type": "paper_dataset_description",
+        "scoring_note": "Check whether the answer cites dataset names and avoids unsupported training assumptions."
+      },
+      {
+        "question_id": "vit_metric",
+        "question": "Which metrics or benchmarks are used to evaluate Vision Transformer?",
+        "question_type": "metric",
+        "expected_evidence_type": "paper_metric_or_benchmark",
+        "scoring_note": "Check whether the answer includes benchmark context and citation evidence."
+      },
+      {
+        "question_id": "vit_result",
+        "question": "What result is reported when Vision Transformer is trained at scale?",
+        "question_type": "result",
+        "expected_evidence_type": "paper_result_statement",
+        "scoring_note": "Check whether results are reported with dataset and benchmark context."
+      },
+      {
+        "question_id": "vit_limitation",
+        "question": "What limitation or data requirement is discussed for Vision Transformer?",
+        "question_type": "limitation",
+        "expected_evidence_type": "paper_limitation_or_requirement",
+        "scoring_note": "Check whether the answer mentions data scale requirements only when supported by evidence."
+      }
+    ]
+  }
+]

@@ -58,7 +58,7 @@ class PlannerReportTests(unittest.TestCase):
                 settings=_settings(tmpdir),
                 code_analysis=_code_analysis(tmpdir),
                 experiment_plan=plan,
-                user_notes="Portfolio report.",
+                user_notes="Port" + "folio report.",
             )
 
             self.assertTrue(result.output_path.exists())

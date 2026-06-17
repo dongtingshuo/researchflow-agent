@@ -10,9 +10,9 @@ This repository implements an AI Agent system for research paper reading, code r
 
 本仓库实现一个用于科研论文阅读、代码仓库分析、实验复现规划和报告生成的 AI Agent 系统。
 
-The project is maintained as a professional research workflow system with modular components, reproducible outputs, and evidence-aware verification.
+The project is intended as a modular research workflow assistant for paper reading, repository analysis, experiment planning, and evidence-aware reporting.
 
-本项目定位为专业科研工作流系统，强调模块化组件、可复现输出和证据感知核验。
+本项目定位为模块化科研工作流助手，用于论文阅读、仓库分析、实验规划和证据感知报告生成。
 
 ## Main Features
 

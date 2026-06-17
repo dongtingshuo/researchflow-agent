@@ -157,10 +157,10 @@ Generated files:
 - PDF 页码来自解析器页序；如果需要严格出版页码，应与原 PDF 阅读器核对。
 - A generated reproduction plan is not a completed experiment run. Datasets, checkpoints, hardware, and metrics still require manual verification.
 - 生成的复现计划不等于已经完成实验运行；数据集、checkpoint、硬件和指标仍需人工验证。
-- The verifier provides evidence attribution and risk hints, not formal proof of factual correctness.
-- Verifier 提供证据归因和风险提示，不是事实正确性的形式化证明。
-- Evaluation currently uses fixed benchmark cases and human-reviewable scoring artifacts rather than fully automatic judging.
-- 当前评测使用固定 benchmark 和人工可复核评分文件，而不是完全自动评分。
+- The verifier provides evidence attribution and risk hints, not a guarantee of factual correctness.
+- Verifier 提供证据归因和风险提示，不是事实正确性的保证。
+- Evaluation currently uses fixed benchmark cases and human-reviewable scoring artifacts rather than automated judging.
+- 当前评测使用固定 benchmark 和人工可复核评分文件，而不是自动化评分。
 
 ## 9. Roadmap / 后续计划
 

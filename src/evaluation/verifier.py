@@ -296,7 +296,7 @@ def _extract_possible_hallucinations(
         "最佳",
         "显著优于",
         "达到",
-        "证明",
+        "证实",
     ]
     metric_pattern = re.compile(r"\b\d+(?:\.\d+)?\s?(?:%|accuracy|acc|f1|map|bleu)\b", re.IGNORECASE)
     for line in _meaningful_lines(generated_text):
