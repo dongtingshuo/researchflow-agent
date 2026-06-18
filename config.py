@@ -101,7 +101,7 @@ def get_settings() -> Settings:
     settings = Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openai_base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-        openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        openai_model=os.getenv("OPENAI_MODEL") or os.getenv("MODEL_NAME", "gpt-4o-mini"),
         embedding_model=os.getenv(
             "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
         ),
@@ -113,7 +113,9 @@ def get_settings() -> Settings:
             os.getenv("VECTORSTORE_DIR", "data/vectorstores")
         ),
         workspace_dir=_resolve_path(os.getenv("WORKSPACE_DIR", "data/workspaces")),
-        output_dir=_resolve_path(os.getenv("OUTPUT_DIR", "data/outputs")),
+        output_dir=_resolve_path(
+            os.getenv("OUTPUT_DIR") or os.getenv("DEFAULT_OUTPUT_DIR", "data/outputs")
+        ),
         request_timeout_seconds=_env_int("REQUEST_TIMEOUT_SECONDS", 60),
         max_chunk_tokens=_env_int("MAX_PAPER_CHUNK_TOKENS", 220),
         chunk_overlap_tokens=_env_int("CHUNK_OVERLAP_TOKENS", 40),

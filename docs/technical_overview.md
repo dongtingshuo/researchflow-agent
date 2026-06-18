@@ -142,14 +142,14 @@ Generated files:
 
 ## 7. Current Validation / 当前验证
 
-- Unit tests: `42 passed`
-- 单元测试：`42 passed`
+- Unit tests are maintained under `tests/`; use the current `python -m pytest -q` output as the source of truth.
+- 单元测试位于 `tests/`；测试数量以当前 `python -m pytest -q` 输出为准。
 - App construction: `app.build_app()` returns `Blocks`
 - 应用构建：`app.build_app()` 返回 `Blocks`
 - Evaluation benchmark template exports Markdown and CSV.
 - Evaluation benchmark 模板可导出 Markdown 和 CSV。
-- Real-paper smoke tests cover CLIP, ReAct, and RAG questions.
-- 真实论文 smoke tests 覆盖 CLIP、ReAct 和 RAG 问题。
+- Local validation records and manual evaluation templates are provided under `examples/` and `docs/`.
+- 本地验证记录和人工评测模板位于 `examples/` 与 `docs/`。
 
 ## 8. Limitations / 局限性
 
@@ -172,5 +172,5 @@ Generated files:
 - 增加 Chroma / FAISS 后端适配。
 - Add evaluation result visualization.
 - 增加评测结果可视化。
-- Add more benchmark papers across CV, NLP, Agent, Multimodal, and RAG.
-- 补充更多 CV、NLP、Agent、Multimodal 和 RAG 论文 benchmark。
+- Add more benchmark papers across computer vision, NLP, Agent, Multimodal, and RAG.
+- 补充更多 computer vision、NLP、Agent、Multimodal 和 RAG 论文 benchmark。

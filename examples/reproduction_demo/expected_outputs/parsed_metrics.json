@@ -1,0 +1,24 @@
+{
+  "metrics": {
+    "accuracy": 84.9,
+    "loss": 0.35,
+    "f1": 0.82
+  },
+  "raw_matches": [
+    {
+      "name": "accuracy",
+      "normalized_name": "accuracy",
+      "value": 84.9
+    },
+    {
+      "name": "loss",
+      "normalized_name": "loss",
+      "value": 0.35
+    },
+    {
+      "name": "f1",
+      "normalized_name": "f1",
+      "value": 0.82
+    }
+  ]
+}

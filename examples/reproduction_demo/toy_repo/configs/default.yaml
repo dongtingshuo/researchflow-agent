@@ -1,0 +1,5 @@
+task: image_classification
+dataset: toy-cifar
+metric: accuracy
+paper_accuracy: 87.2
+expected_demo_accuracy: 84.9

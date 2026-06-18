@@ -1,0 +1,26 @@
+{
+  "status": "partially reproduced",
+  "comparisons": [
+    {
+      "name": "accuracy",
+      "paper_value": 87.2,
+      "reproduced_value": 84.9,
+      "gap": -2.3,
+      "status": "partially reproduced"
+    },
+    {
+      "name": "loss",
+      "paper_value": 0.31,
+      "reproduced_value": 0.35,
+      "gap": -0.04,
+      "status": "reproduced"
+    },
+    {
+      "name": "f1",
+      "paper_value": 0.84,
+      "reproduced_value": 0.82,
+      "gap": -0.02,
+      "status": "reproduced"
+    }
+  ]
+}

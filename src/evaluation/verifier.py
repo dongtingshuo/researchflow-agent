@@ -6,6 +6,11 @@ from dataclasses import dataclass, field
 import re
 
 from src.code_analyzer.models import CodeAnalysisResult
+from src.experiment.command_planner import CommandPlan
+from src.experiment.log_parser import LogParseResult
+from src.experiment.result_comparator import ResultComparison
+from src.experiment.runner import CommandRunResult
+from src.paper.results import PaperResultSummary
 
 
 @dataclass(frozen=True)
@@ -68,6 +73,77 @@ class VerificationResult:
             lines.extend(["", "## 结构检查与提示"])
             lines.extend(f"- **{issue.level}**: {issue.message}" for issue in self.issues)
         return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class ReproductionClaimCheck:
+    """One structured reproduction evidence check."""
+
+    claim: str
+    source_type: str
+    evidence: str
+    confidence: str
+    needs_manual_check: bool
+
+
+@dataclass(frozen=True)
+class ReproductionVerificationResult:
+    """Verifier output for experiment reproduction workflows."""
+
+    checks: list[ReproductionClaimCheck] = field(default_factory=list)
+    passed: bool = False
+
+    def to_markdown(self) -> str:
+        """Render reproduction verifier checks as Markdown."""
+        status = "PASS_WITH_UNCERTAINTY" if self.passed else "NEEDS_REVIEW"
+        lines = [
+            f"# Reproduction Verifier Result: {status}",
+            "",
+            "> Verifier checks evidence attribution for the reproduction workflow. "
+            "It does not guarantee factual correctness.",
+            "",
+            "| Claim | Source Type | Evidence | Confidence | Manual Check |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        if not self.checks:
+            lines.append("| No checks | missing | No reproduction artifacts were provided. | low | true |")
+            return "\n".join(lines)
+        for item in self.checks:
+            lines.append(
+                f"| {_escape_table(item.claim)} | `{item.source_type}` | "
+                f"{_escape_table(item.evidence)} | `{item.confidence}` | "
+                f"{str(item.needs_manual_check).lower()} |"
+            )
+        return "\n".join(lines)
+
+
+def verify_reproduction_artifacts(
+    paper_results: PaperResultSummary | None = None,
+    code_analysis: CodeAnalysisResult | None = None,
+    command_plan: CommandPlan | None = None,
+    run_results: list[CommandRunResult] | None = None,
+    log_summary: LogParseResult | None = None,
+    comparison: ResultComparison | None = None,
+) -> ReproductionVerificationResult:
+    """Check evidence grounding for a reproduction workflow.
+
+    The function classifies claims as paper, code, log, inference, or missing
+    evidence. It is intentionally conservative and asks for manual review when
+    an artifact is absent or was generated from dry-run output.
+    """
+    checks: list[ReproductionClaimCheck] = []
+    run_results = run_results or []
+
+    checks.extend(_verify_paper_results(paper_results))
+    checks.extend(_verify_command_plan(command_plan, code_analysis))
+    checks.extend(_verify_run_results(run_results, log_summary))
+    checks.extend(_verify_comparison(comparison, paper_results, log_summary))
+
+    passed = bool(checks) and all(
+        item.source_type != "missing" and not (item.confidence == "low" and item.needs_manual_check)
+        for item in checks
+    )
+    return ReproductionVerificationResult(checks=checks, passed=passed)
 
 
 def verify_workflow_outputs(
@@ -521,6 +597,230 @@ def _dedupe_items(items: list[EvidenceItem]) -> list[EvidenceItem]:
 
 def _has_role(code_analysis: CodeAnalysisResult, role: str) -> bool:
     return any(item.role == role for item in code_analysis.key_files)
+
+
+def _verify_paper_results(
+    paper_results: PaperResultSummary | None,
+) -> list[ReproductionClaimCheck]:
+    if paper_results is None:
+        return [
+            ReproductionClaimCheck(
+                claim="Paper results are available for comparison.",
+                source_type="missing",
+                evidence="No paper result extraction output was provided.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        ]
+    checks: list[ReproductionClaimCheck] = []
+    if paper_results.metrics:
+        for metric in paper_results.metrics[:8]:
+            if metric.page is not None and metric.evidence:
+                checks.append(
+                    ReproductionClaimCheck(
+                        claim=f"Paper reports {metric.name}={metric.value:g}.",
+                        source_type="paper",
+                        evidence=f"Page {metric.page}: {_shorten(metric.evidence, 180)}",
+                        confidence=metric.confidence,
+                        needs_manual_check=True,
+                    )
+                )
+            else:
+                checks.append(
+                    ReproductionClaimCheck(
+                        claim=f"Paper reports {metric.name}={metric.value:g}.",
+                        source_type="missing",
+                        evidence="Metric lacks explicit page evidence.",
+                        confidence="low",
+                        needs_manual_check=True,
+                    )
+                )
+    else:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Paper result metrics were extracted.",
+                source_type="missing",
+                evidence="No metric value was extracted from paper result evidence.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+    return checks
+
+
+def _verify_command_plan(
+    command_plan: CommandPlan | None,
+    code_analysis: CodeAnalysisResult | None,
+) -> list[ReproductionClaimCheck]:
+    if command_plan is None:
+        return [
+            ReproductionClaimCheck(
+                claim="Reproduction commands were planned.",
+                source_type="missing",
+                evidence="No command plan was provided.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        ]
+
+    workspace = command_plan.workspace_path
+    checks: list[ReproductionClaimCheck] = []
+    for command in command_plan.commands[:12]:
+        if command.entry_file:
+            entry_path = workspace / command.entry_file
+            exists = entry_path.exists()
+            checks.append(
+                ReproductionClaimCheck(
+                    claim=f"Command has entry file: {command.command}",
+                    source_type="code" if exists else "missing",
+                    evidence=(
+                        f"`{command.entry_file}` exists in workspace."
+                        if exists
+                        else f"`{command.entry_file}` was not found in workspace."
+                    ),
+                    confidence="high" if exists else "low",
+                    needs_manual_check=not exists or command.risk_level != "safe",
+                )
+            )
+        if command.config_file:
+            config_path = workspace / command.config_file
+            exists = config_path.exists()
+            checks.append(
+                ReproductionClaimCheck(
+                    claim=f"Command has config or dependency file: {command.command}",
+                    source_type="code" if exists else "missing",
+                    evidence=(
+                        f"`{command.config_file}` exists in workspace."
+                        if exists
+                        else f"`{command.config_file}` was not found in workspace."
+                    ),
+                    confidence="high" if exists else "low",
+                    needs_manual_check=not exists,
+                )
+            )
+    if not any(item.kind in {"pip_requirements", "python_project", "conda_environment"} for item in command_plan.config_files):
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Dependency file exists.",
+                source_type="missing",
+                evidence="No requirements.txt, pyproject.toml, or environment.yml was detected.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+    if code_analysis is None:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Code analysis evidence is available.",
+                source_type="missing",
+                evidence="No CodeAnalysisResult was provided.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+    return checks
+
+
+def _verify_run_results(
+    run_results: list[CommandRunResult],
+    log_summary: LogParseResult | None,
+) -> list[ReproductionClaimCheck]:
+    checks: list[ReproductionClaimCheck] = []
+    if not run_results:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Experiment results came from real logs.",
+                source_type="missing",
+                evidence="No command run results were provided.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+        return checks
+
+    executed = [item for item in run_results if item.executed]
+    if executed:
+        for item in executed[:8]:
+            checks.append(
+                ReproductionClaimCheck(
+                    claim=f"Command produced a run log: {item.command}",
+                    source_type="log",
+                    evidence=f"returncode={item.returncode}; output={item.output_path}",
+                    confidence="medium" if item.returncode == 0 else "low",
+                    needs_manual_check=item.returncode != 0,
+                )
+            )
+    else:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Experiment results came from real logs.",
+                source_type="missing",
+                evidence="All command results are dry-run records; no real execution log exists.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+
+    if log_summary is not None and log_summary.metrics:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Metrics were parsed from logs.",
+                source_type="log",
+                evidence=", ".join(f"{name}={value:g}" for name, value in log_summary.metrics.items()),
+                confidence="medium",
+                needs_manual_check=True,
+            )
+        )
+    else:
+        checks.append(
+            ReproductionClaimCheck(
+                claim="Metrics were parsed from logs.",
+                source_type="missing",
+                evidence="No supported metric was parsed from run logs.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        )
+    return checks
+
+
+def _verify_comparison(
+    comparison: ResultComparison | None,
+    paper_results: PaperResultSummary | None,
+    log_summary: LogParseResult | None,
+) -> list[ReproductionClaimCheck]:
+    if comparison is None:
+        return [
+            ReproductionClaimCheck(
+                claim="Metric comparison has data sources.",
+                source_type="missing",
+                evidence="No comparison output was provided.",
+                confidence="low",
+                needs_manual_check=True,
+            )
+        ]
+    has_paper = bool(paper_results and paper_results.metrics)
+    has_log = bool(log_summary and log_summary.metrics)
+    source_type = "inference" if has_paper and has_log else "missing"
+    confidence = "medium" if has_paper and has_log else "low"
+    evidence = (
+        f"{len(comparison.comparisons)} comparison row(s); status={comparison.status}."
+        if has_paper and has_log
+        else "Comparison is missing paper metrics or reproduced log metrics."
+    )
+    return [
+        ReproductionClaimCheck(
+            claim="Metric comparison has data sources.",
+            source_type=source_type,
+            evidence=evidence,
+            confidence=confidence,
+            needs_manual_check=True,
+        )
+    ]
+
+
+def _escape_table(text: str) -> str:
+    return _shorten(text.replace("|", "\\|"), 240)
 
 
 _PLAN_SECTIONS = [

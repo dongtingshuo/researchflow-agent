@@ -12,9 +12,19 @@ from src.code_analyzer.models import CodeAnalysisResult
 from src.evaluation import (
     generate_benchmark_template,
     generate_evaluation_table,
+    verify_reproduction_artifacts,
     verify_workflow_outputs,
 )
+from src.experiment import (
+    build_reproduction_report,
+    compare_results,
+    parse_experiment_log,
+    plan_reproduction_commands,
+)
+from src.experiment.runner import run_safe_commands
+from src.paper.results import extract_paper_results
 from src.report import generate_markdown_report
+from src.rag.chunking import chunk_pages
 from src.rag.qa import PaperRAGService
 
 
@@ -242,6 +252,113 @@ def create_evaluation_benchmark_template() -> Tuple[str, str, Optional[str], Opt
         return f"Benchmark generation failed: {exc}", "", None, None
 
 
+def run_reproduction_workflow(
+    uploaded_pdf: Any,
+    repo_url: str,
+    uploaded_zip: Any,
+    execution_mode: str,
+    timeout_seconds: int,
+    user_notes: str,
+) -> Tuple[str, str, str, str, str, str, str, Optional[str]]:
+    """Run the safe-by-default reproduction workflow."""
+    try:
+        settings = get_settings()
+        service = PaperRAGService(settings)
+        index = service.build_from_pdf(_file_path(uploaded_pdf, "PDF paper"))
+        paper_chunks = chunk_pages(
+            index.paper.pages,
+            max_tokens=settings.max_chunk_tokens,
+            overlap_tokens=settings.chunk_overlap_tokens,
+        )
+        paper_results = extract_paper_results(paper_chunks)
+
+        if repo_url.strip():
+            code_analysis = analyze_github_repository(repo_url.strip(), settings)
+        elif uploaded_zip is not None:
+            code_analysis = analyze_zip_archive(_file_path(uploaded_zip, "zip archive"), settings)
+        else:
+            raise ValueError("Please provide a GitHub repository URL or upload a code zip.")
+
+        command_plan = plan_reproduction_commands(code_analysis, user_notes=user_notes)
+        dry_run = execution_mode != "run safe commands"
+        run_results = run_safe_commands(
+            command_plan.commands,
+            cwd=command_plan.workspace_path,
+            output_dir=settings.output_dir,
+            timeout_seconds=int(timeout_seconds or 30),
+            dry_run=dry_run,
+        )
+        combined_log = "\n".join(item.combined_log() for item in run_results)
+        log_summary = parse_experiment_log(combined_log)
+        comparison = compare_results(paper_results.metrics_dict(), log_summary.metrics)
+        verification = verify_reproduction_artifacts(
+            paper_results=paper_results,
+            code_analysis=code_analysis,
+            command_plan=command_plan,
+            run_results=run_results,
+            log_summary=log_summary,
+            comparison=comparison,
+        )
+        report = build_reproduction_report(
+            paper_info=paper_results.to_markdown(),
+            code_analysis=code_analysis,
+            command_plan=command_plan,
+            run_results=run_results,
+            log_summary=log_summary,
+            comparison=comparison,
+            verifier_markdown=verification.to_markdown(),
+            output_dir=settings.output_dir,
+            user_notes=user_notes,
+        )
+        status = (
+            "# Reproduction Workflow Status\n\n"
+            f"- PDF pages: {index.paper.page_count}\n"
+            f"- Paper chunks: {len(paper_chunks)}\n"
+            f"- Code workspace: `{code_analysis.workspace_path}`\n"
+            f"- Execution mode: `{execution_mode}`\n"
+            f"- Commands recorded: {len(run_results)}\n"
+            f"- Report: `{report.output_path}`"
+        )
+        run_summary = _run_results_markdown(run_results)
+        return (
+            status,
+            paper_results.to_markdown(),
+            command_plan.to_markdown(),
+            run_summary,
+            log_summary.to_markdown(),
+            comparison.to_markdown(),
+            verification.to_markdown(),
+            str(report.output_path),
+        )
+    except Exception as exc:
+        return (
+            f"# Reproduction Workflow Status\n\n- **ERROR**: {exc}",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            None,
+        )
+
+
+def _run_results_markdown(run_results: list[Any]) -> str:
+    if not run_results:
+        return "No commands were recorded."
+    lines = [
+        "| Command | Executed | Risk | Return Code | Output JSON |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for item in run_results:
+        returncode = "" if item.returncode is None else str(item.returncode)
+        lines.append(
+            f"| `{item.command}` | {item.executed} | `{item.risk_level}` | "
+            f"{returncode} | `{item.output_path}` |"
+        )
+    return "\n".join(lines)
+
+
 def build_app():
     """Build the Gradio Blocks UI."""
     try:
@@ -253,7 +370,7 @@ def build_app():
         ) from exc
 
     with gr.Blocks(title="ResearchFlow-Agent") as demo:
-        gr.Markdown("# ResearchFlow-Agent MVP")
+        gr.Markdown("# ResearchFlow-Agent")
         gr.Markdown(
             "Upload a paper PDF, build a local RAG index, then ask questions with "
             "page-grounded citations."
@@ -408,6 +525,61 @@ def build_app():
                         workflow_verifier,
                         workflow_plan_file,
                         workflow_report_file,
+                    ],
+                )
+
+            with gr.Tab("Reproduction / 论文复现"):
+                reproduction_pdf = gr.File(label="Paper PDF", file_types=[".pdf"])
+                reproduction_repo_url = gr.Textbox(
+                    label="GitHub Repository URL",
+                    placeholder="https://github.com/user/repository",
+                )
+                reproduction_zip = gr.File(label="Code Zip", file_types=[".zip"])
+                reproduction_mode = gr.Radio(
+                    choices=["dry-run only", "run safe commands"],
+                    value="dry-run only",
+                    label="Execution Mode",
+                )
+                reproduction_timeout = gr.Number(
+                    value=30,
+                    precision=0,
+                    label="Timeout Seconds",
+                )
+                reproduction_notes = gr.Textbox(
+                    label="Additional Notes",
+                    placeholder="例如：数据集路径、checkpoint 路径、只运行 help 命令。",
+                    lines=4,
+                )
+                reproduction_button = gr.Button("Run Reproduction Workflow", variant="primary")
+
+                reproduction_status = gr.Markdown(label="Status")
+                reproduction_paper_results = gr.Markdown(label="Paper Result Extraction")
+                reproduction_commands = gr.Markdown(label="Code Entry Analysis and Candidate Commands")
+                reproduction_run_logs = gr.Markdown(label="Run Log Summary")
+                reproduction_metrics = gr.Markdown(label="Parsed Metrics")
+                reproduction_comparison = gr.Markdown(label="Paper vs Reproduced Results")
+                reproduction_verifier = gr.Markdown(label="Verifier Checks")
+                reproduction_report_file = gr.File(label="Download Reproduction Report")
+
+                reproduction_button.click(
+                    fn=run_reproduction_workflow,
+                    inputs=[
+                        reproduction_pdf,
+                        reproduction_repo_url,
+                        reproduction_zip,
+                        reproduction_mode,
+                        reproduction_timeout,
+                        reproduction_notes,
+                    ],
+                    outputs=[
+                        reproduction_status,
+                        reproduction_paper_results,
+                        reproduction_commands,
+                        reproduction_run_logs,
+                        reproduction_metrics,
+                        reproduction_comparison,
+                        reproduction_verifier,
+                        reproduction_report_file,
                     ],
                 )
 
