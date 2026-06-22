@@ -86,6 +86,7 @@ def run_demo(
             output_dir=output_dir,
             timeout_seconds=timeout_seconds,
             dry_run=not run_safe,
+            allow_repository_scripts=True,
         )
         for command in selected_commands
     ]

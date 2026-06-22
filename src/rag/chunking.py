@@ -60,4 +60,6 @@ def _join_tokens(tokens: list[str]) -> str:
     text = " ".join(tokens)
     text = re.sub(r"\s+([.,;:!?%)\]\}])", r"\1", text)
     text = re.sub(r"([(\[\{])\s+", r"\1", text)
+    text = re.sub(r"(?<=\w)\s*-\s*(?=\w)", "-", text)
+    text = re.sub(r"(?<=\d)\.\s+(?=\d)", ".", text)
     return text.strip()

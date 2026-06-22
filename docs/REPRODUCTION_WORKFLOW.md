@@ -18,7 +18,7 @@ Gradio Tab 接受：
 2. GitHub repository URL or zip archive
 3. Execution mode
    - `dry-run only`
-   - `run safe commands`
+   - `trust and run inspection commands`
 4. Timeout seconds
 5. User notes, such as dataset path or checkpoint path
 
@@ -103,9 +103,9 @@ Default mode:
 dry-run only
 ```
 
-Dry-run mode generates command records without executing repository code. The `run safe commands` mode only executes commands classified as `safe`.
+Dry-run mode generates command records without executing repository code. The `trust and run inspection commands` mode requires the user to review and explicitly trust the repository before Python inspection scripts run.
 
-dry-run 模式只生成命令记录，不执行仓库代码。`run safe commands` 模式只执行被分类为 `safe` 的命令。
+dry-run 模式只生成命令记录，不执行仓库代码。`trust and run inspection commands` 模式要求用户先检查并显式信任仓库，之后才会运行 Python 检查脚本。
 
 ## Report / 报告
 

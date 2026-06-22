@@ -80,9 +80,9 @@ The RAG pipeline retrieves candidate chunks with hybrid search, reranks them wit
 
 RAG 流程先通过 hybrid search 召回候选 chunk，在可用时使用 cross-encoder reranker 重排，再抽取与问题相关的证据句，并要求 LLM 使用 `[S1]` 等来源编号进行引用。
 
-If the LLM response does not contain valid source identifiers, the system falls back to extractive evidence instead of accepting an unsupported answer.
+Each answer item must cite valid source identifiers. Numeric values and technical entities are checked against the cited text; failed checks fall back to extractive evidence.
 
-如果 LLM 回答没有包含有效来源编号，系统会回退到抽取式证据，而不是直接接受无依据回答。
+每个回答条目都必须引用有效来源编号。系统还会将数字和技术实体与所引文本核对；检查失败时回退到抽取式证据。
 
 ### 5.2 Code Analysis / 代码分析
 
@@ -103,6 +103,10 @@ The repository loader only accepts public HTTPS GitHub URLs in the `https://gith
 Zip extraction checks for path traversal, absolute paths, symlinks, excessive member count, and excessive extracted size.
 
 zip 解压会检查路径穿越、绝对路径、符号链接、过多文件数量和过大解压体积。
+
+Repository scripts require explicit trust confirmation, and external paper or code content is sent to an LLM only after configuration-level opt-in. These controls are not a replacement for container isolation.
+
+仓库脚本需要显式信任确认；论文或代码内容也只有在配置层明确启用后才会发送给外部 LLM。这些控制不能替代容器隔离。
 
 ## 6. Evaluation Benchmark / 评测 Benchmark
 
@@ -166,8 +170,8 @@ Generated files:
 
 - Add SQLite session history.
 - 增加 SQLite 会话历史。
-- Add stronger citation-level factuality checks.
-- 增强 citation-level 事实核验。
+- Add semantic entailment checks beyond citation, number, and entity validation.
+- 在引用、数字和实体校验基础上增加语义蕴含检查。
 - Add Chroma / FAISS backend adapters.
 - 增加 Chroma / FAISS 后端适配。
 - Add evaluation result visualization.

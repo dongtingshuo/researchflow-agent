@@ -26,6 +26,14 @@ class ChunkingTests(unittest.TestCase):
         self.assertEqual(chunks[0].start_token, 0)
         self.assertEqual(chunks[1].start_token, 3)
 
+    def test_chunking_preserves_hyphenated_terms_and_decimals(self):
+        pages = [PageText(page_number=1, text="toy-cifar accuracy 87.2")]
+
+        chunks = chunk_pages(pages, max_tokens=20, overlap_tokens=0)
+
+        self.assertIn("toy-cifar", chunks[0].text)
+        self.assertIn("87.2", chunks[0].text)
+
 
 if __name__ == "__main__":
     unittest.main()

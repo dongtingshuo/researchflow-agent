@@ -12,6 +12,7 @@ from src.experiment.command_planner import CommandPlan
 from src.experiment.log_parser import LogParseResult
 from src.experiment.result_comparator import ResultComparison
 from src.experiment.runner import CommandRunResult
+from src.utils.files import portable_display_path
 
 
 @dataclass(frozen=True)
@@ -91,7 +92,7 @@ def _code_info(code_analysis: CodeAnalysisResult | None) -> str:
         [
             f"- Source type: `{code_analysis.source_type}`",
             f"- Source: `{code_analysis.source}`",
-            f"- Workspace: `{code_analysis.workspace_path}`",
+            f"- Workspace: `{portable_display_path(code_analysis.workspace_path)}`",
             f"- Key files: {len(code_analysis.key_files)}",
         ]
     )
@@ -121,7 +122,8 @@ def _run_results_section(run_results: list[CommandRunResult]) -> str:
         returncode = "" if item.returncode is None else str(item.returncode)
         lines.append(
             f"| `{item.command}` | {item.executed} | `{item.risk_level}` | "
-            f"{returncode} | {item.duration_seconds:g}s | `{item.output_path}` |"
+            f"{returncode} | {item.duration_seconds:g}s | "
+            f"`{portable_display_path(item.output_path)}` |"
         )
     return "\n".join(lines)
 

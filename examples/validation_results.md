@@ -22,6 +22,12 @@ Validated components:
 - 单元测试与集成测试
 - CI configuration for offline-friendly tests
 - 面向离线测试的 CI 配置
+- Real two-page PDF parsing and page-grounded RAG integration
+- 真实两页 PDF 解析和页码证据 RAG 集成
+- Repository-script trust gate and subprocess credential isolation
+- 仓库脚本信任门和子进程凭据隔离
+- Bundled toy reproduction workflow
+- 项目内置 toy 复现工作流
 
 Not validated as completed experiment runs:
 
@@ -38,17 +44,17 @@ Not validated as completed experiment runs:
 
 | Item | Value |
 | --- | --- |
-| Date | 2026-06-17 |
+| Date | 2026-06-21 |
 | Local environment | `researchflow` |
 | Python | 3.11.x in the local conda environment |
-| Test command | `conda run -n researchflow pytest tests` |
+| Test command | `conda run -n researchflow python -m pytest -q` |
 | Network requirement | No network required for tests |
 | API key requirement | No API key required for tests |
 
 ## Commands Executed / 已执行命令
 
 ```bash
-conda run -n researchflow pytest tests
+conda run -n researchflow python -m pytest -q
 ```
 
 Result:
@@ -56,7 +62,20 @@ Result:
 结果：
 
 ```text
-48 passed
+73 passed, 38 subtests passed
+```
+
+```bash
+conda run -n researchflow python scripts/run_reproduction_demo.py --run-safe --output-dir /tmp/researchflow-demo-validation
+```
+
+Result:
+
+结果：
+
+```text
+Report generated; accuracy, loss, and F1 were parsed and compared with the toy paper excerpt.
+报告已生成；accuracy、loss 和 F1 已从日志解析，并与 toy 论文片段完成对比。
 ```
 
 ```bash

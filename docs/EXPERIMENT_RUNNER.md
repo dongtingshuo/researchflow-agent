@@ -64,9 +64,9 @@ The runner defaults to dry-run mode. In dry-run mode, it records the planned com
 
 Runner 默认使用 dry-run 模式。该模式只记录计划命令并保存 JSON 结果，不执行仓库代码。
 
-When execution is enabled, only `safe` commands are executed by default. Every execution has:
+When execution is enabled, repository scripts additionally require explicit trust confirmation. Every execution has:
 
-启用执行时，默认只执行 `safe` 命令。每次执行都会包含：
+启用执行时，仓库脚本还需要显式信任确认。每次执行都会包含：
 
 - working directory
 - timeout
@@ -75,6 +75,12 @@ When execution is enabled, only `safe` commands are executed by default. Every e
 - return code
 - duration
 - JSON result file under `data/outputs/experiment_runs/`
+- workspace path validation
+- a sanitized child-process environment that excludes API keys
+
+`--help` and `--dry-run` do not make an untrusted Python file safe. The runner controls execution and records evidence, but it is not a container sandbox.
+
+`--help` 和 `--dry-run` 不会让不可信 Python 文件自动变得安全。Runner 负责控制执行和保存证据，但它不是容器沙箱。
 
 ## Log Metrics / 日志指标
 

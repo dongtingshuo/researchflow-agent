@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Union
 
 from src.paper.models import PageText, ParsedPaper
@@ -60,5 +61,10 @@ def _parse_with_pdfplumber(path: Path) -> ParsedPaper:
 
 
 def _clean_text(text: str) -> str:
-    lines = [line.strip() for line in text.replace("\r", "\n").split("\n")]
+    lines = []
+    for raw_line in text.replace("\r", "\n").split("\n"):
+        line = raw_line.strip()
+        line = re.sub(r"(?<=\w)\s+-\s+(?=\w)", "-", line)
+        line = re.sub(r"(?<=\d)\.\s+(?=\d)", ".", line)
+        lines.append(line)
     return "\n".join(line for line in lines if line)

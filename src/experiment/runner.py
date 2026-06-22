@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import subprocess
 import time
@@ -51,10 +52,19 @@ def run_command_candidate(
     max_output_chars: int = 8000,
     dry_run: bool = True,
     allow_needs_confirm: bool = False,
+    allow_repository_scripts: bool = False,
 ) -> CommandRunResult:
-    """Run or dry-run one candidate command with safety checks."""
+    """Run or dry-run one candidate command with explicit trust checks."""
     risk, reason, can_execute = classify_command_risk(candidate.command)
     workspace = Path(cwd).resolve()
+    if not workspace.exists() or not workspace.is_dir():
+        raise ValueError(f"Command workspace is not a directory: {workspace}")
+    repository_script = (
+        _repository_script_path(candidate.argv(), workspace)
+        if risk != "unsafe"
+        else None
+    )
+    repository_script_allowed = repository_script is None or allow_repository_scripts
     target_output_dir = Path(output_dir) if output_dir is not None else OUTPUT_DIR
     run_dir = target_output_dir / "experiment_runs"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -65,6 +75,7 @@ def run_command_candidate(
         and risk != "unsafe"
         and (risk == "safe" or allow_needs_confirm)
         and (can_execute or allow_needs_confirm)
+        and repository_script_allowed
     )
     started = time.monotonic()
     stdout = ""
@@ -81,6 +92,7 @@ def run_command_candidate(
                 capture_output=True,
                 timeout=max(1, timeout_seconds),
                 check=False,
+                env=_sanitized_environment(),
             )
             stdout = _trim(completed.stdout, max_output_chars)
             stderr = _trim(completed.stderr, max_output_chars)
@@ -94,7 +106,15 @@ def run_command_candidate(
             error = f"Command execution failed: {exc}"
             returncode = None
     else:
-        error = _dry_run_reason(dry_run, risk, reason)
+        if dry_run:
+            error = _dry_run_reason(dry_run, risk, reason)
+        elif not repository_script_allowed:
+            error = (
+                "Repository script execution requires explicit trust confirmation, "
+                "even when --help or --dry-run is present."
+            )
+        else:
+            error = _dry_run_reason(dry_run, risk, reason)
 
     duration = time.monotonic() - started
     result = CommandRunResult(
@@ -121,8 +141,9 @@ def run_safe_commands(
     timeout_seconds: int = 30,
     max_output_chars: int = 8000,
     dry_run: bool = True,
+    allow_repository_scripts: bool = False,
 ) -> list[CommandRunResult]:
-    """Run or dry-run all candidates, executing only safe commands."""
+    """Run or dry-run candidates, with repository scripts blocked by default."""
     return [
         run_command_candidate(
             candidate,
@@ -132,6 +153,7 @@ def run_safe_commands(
             max_output_chars=max_output_chars,
             dry_run=dry_run,
             allow_needs_confirm=False,
+            allow_repository_scripts=allow_repository_scripts,
         )
         for candidate in candidates
         if candidate.risk_level == "safe" or dry_run
@@ -166,3 +188,42 @@ def _trim(text: str | bytes, limit: int) -> str:
     if len(text) <= limit:
         return text
     return text[: max(0, limit - 80)] + "\n...[output truncated by ResearchFlow-Agent]..."
+
+
+def _repository_script_path(argv: list[str], workspace: Path) -> Path | None:
+    """Validate and return a Python repository script referenced by argv."""
+    if len(argv) < 2 or argv[0].lower() not in {"python", "python3"}:
+        return None
+    script_arg = argv[1]
+    if script_arg.startswith("-"):
+        return None
+    script_path = (workspace / script_arg).resolve()
+    try:
+        script_path.relative_to(workspace)
+    except ValueError as exc:
+        raise ValueError("Repository script path escapes the workspace.") from exc
+    if script_path.suffix.lower() != ".py":
+        raise ValueError("Only Python script files can be executed by the runner.")
+    if not script_path.exists() or not script_path.is_file():
+        raise ValueError(f"Repository script does not exist: {script_arg}")
+    return script_path
+
+
+def _sanitized_environment() -> dict[str, str]:
+    """Pass only runtime essentials to repository subprocesses."""
+    allowed = {
+        "PATH",
+        "HOME",
+        "TMPDIR",
+        "LANG",
+        "LC_ALL",
+        "PYTHONIOENCODING",
+        "CONDA_PREFIX",
+        "VIRTUAL_ENV",
+        "SYSTEMROOT",
+        "WINDIR",
+    }
+    environment = {key: value for key, value in os.environ.items() if key in allowed}
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    return environment

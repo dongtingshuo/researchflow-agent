@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ from config import Settings
 
 
 DEFAULT_GIT_CLONE_TIMEOUT_SECONDS = 120
+DEFAULT_MAX_CLONE_TOTAL_BYTES = 500_000_000
 DEFAULT_MAX_ZIP_MEMBERS = 4000
 DEFAULT_MAX_ZIP_TOTAL_BYTES = 150_000_000
 
@@ -38,41 +40,52 @@ def clone_github_repository(
     repo_name = _repo_name_from_url(normalized_url)
     target_dir = _unique_path(workspace_dir / repo_name)
 
+    clone_env = os.environ.copy()
+    clone_env["GIT_TERMINAL_PROMPT"] = "0"
     try:
-        from git import Repo  # type: ignore
-
-        Repo.clone_from(
-            normalized_url,
-            target_dir,
-            multi_options=["--depth", "1", "--single-branch"],
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "--single-branch",
+                "--no-tags",
+                normalized_url,
+                str(target_dir),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=max(1, timeout),
+            env=clone_env,
         )
-    except Exception:
-        try:
-            subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth",
-                    "1",
-                    "--single-branch",
-                    normalized_url,
-                    str(target_dir),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as exc:
-            if target_dir.exists():
-                shutil.rmtree(target_dir)
+        max_bytes = (
+            settings.max_clone_total_bytes
+            if settings is not None
+            else DEFAULT_MAX_CLONE_TOTAL_BYTES
+        )
+        clone_size = _directory_size(target_dir)
+        if clone_size > max_bytes:
             raise CodeLoadError(
-                f"Repository clone timed out after {timeout} seconds."
-            ) from exc
-        except Exception as exc:
-            if target_dir.exists():
-                shutil.rmtree(target_dir)
-            raise CodeLoadError(f"Failed to clone repository: {exc}") from exc
+                f"Cloned repository is too large ({clone_size} bytes > {max_bytes})."
+            )
+    except subprocess.TimeoutExpired as exc:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        raise CodeLoadError(
+            f"Repository clone timed out after {timeout} seconds."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        detail = (exc.stderr or "").strip()
+        if detail:
+            detail = detail[-500:]
+        raise CodeLoadError(
+            f"Failed to clone repository{f': {detail}' if detail else '.'}"
+        ) from exc
+    except Exception:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        raise
 
     return target_dir
 
@@ -181,6 +194,19 @@ def _unique_path(path: Path) -> Path:
         if not candidate.exists():
             return candidate
     raise CodeLoadError(f"Could not allocate a workspace path for {path.name}.")
+
+
+def _directory_size(path: Path) -> int:
+    """Return the total size of regular files without following symlinks."""
+    total = 0
+    for item in path.rglob("*"):
+        if item.is_symlink() or not item.is_file():
+            continue
+        try:
+            total += item.stat().st_size
+        except OSError:
+            continue
+    return total
 
 
 def _validate_zip_archive(

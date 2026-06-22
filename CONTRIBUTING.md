@@ -11,7 +11,7 @@ Thank you for improving ResearchFlow-Agent. This project is designed as a modula
 ```bash
 conda create -n researchflow python=3.11
 conda activate researchflow
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
@@ -53,7 +53,9 @@ Dry-run:
 python scripts/run_reproduction_demo.py
 ```
 
-Run safe commands:
+Run the bundled, reviewed toy repository commands:
+
+运行项目内置且已检查的 toy 仓库命令：
 
 ```bash
 python scripts/run_reproduction_demo.py --run-safe

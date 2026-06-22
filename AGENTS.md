@@ -38,10 +38,10 @@ The project is intended as a modular research workflow assistant for paper readi
 - Python 3.10+
 - Gradio
 - PyMuPDF or pdfplumber
-- Chroma or FAISS
+- Local JSON vector store
 - sentence-transformers
 - OpenAI-compatible LLM API
-- GitPython
+- subprocess-based Git loading
 - SQLite or local JSON storage
 - pytest
 
@@ -80,7 +80,11 @@ python app.py
 
 Run tests:
 
-pytest tests
+python -m pytest -q
+
+Install development dependencies:
+
+pip install -r requirements-dev.txt
 
 ## Directory Guide
 

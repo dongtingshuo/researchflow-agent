@@ -4,6 +4,7 @@ from src.paper.models import RetrievedChunk, TextChunk
 from src.rag.reranker import HeuristicReranker
 from src.rag.qa import (
     extract_relevant_excerpt,
+    find_unsupported_answer_claims,
     format_citations,
     format_retrieved_context,
     ground_answer_with_evidence,
@@ -128,6 +129,74 @@ class QAFormattingTests(unittest.TestCase):
         self.assertIn("拒绝直接采用", answer)
         self.assertIn("[S1] Page 3", answer)
         self.assertIn("contrastive objective", answer)
+
+    def test_ground_answer_rejects_partially_uncited_claims(self):
+        retrieved = [
+            RetrievedChunk(
+                chunk=TextChunk(
+                    chunk_id="p3-0-8",
+                    text="CLIP uses a contrastive objective for image-text learning.",
+                    page_numbers=[3],
+                ),
+                score=0.9,
+            )
+        ]
+
+        answer = ground_answer_with_evidence(
+            "- **CLIP** uses a contrastive objective [S1].\n"
+            "- It reaches 99.9 accuracy without a citation.",
+            retrieved,
+            "What does CLIP use?",
+        )
+
+        self.assertIn("1 个条目缺少逐项可核验依据", answer)
+        self.assertIn("拒绝直接采用", answer)
+
+    def test_claim_validation_rejects_number_not_present_in_source(self):
+        retrieved = [
+            RetrievedChunk(
+                chunk=TextChunk(
+                    chunk_id="p5-0-4",
+                    text="The reported accuracy is 87.2 on toy-cifar.",
+                    page_numbers=[5],
+                ),
+                score=0.88,
+            )
+        ]
+
+        unsupported = find_unsupported_answer_claims(
+            "- Reported accuracy is 99.9 on toy-cifar [S1].",
+            retrieved,
+        )
+
+        self.assertEqual(len(unsupported), 1)
+
+    def test_claim_validation_accepts_each_supported_item(self):
+        retrieved = [
+            RetrievedChunk(
+                chunk=TextChunk(
+                    chunk_id="p5-0-4",
+                    text="CLIP reports accuracy 87.2 on toy-cifar.",
+                    page_numbers=[5],
+                ),
+                score=0.88,
+            )
+        ]
+
+        unsupported = find_unsupported_answer_claims(
+            "- **CLIP** reports accuracy 87.2 on toy-cifar [S1].",
+            retrieved,
+        )
+
+        self.assertEqual(unsupported, [])
+
+        grounded = ground_answer_with_evidence(
+            "- **CLIP** reports accuracy 87.2 on toy-cifar [S1].",
+            retrieved,
+            "What accuracy does CLIP report?",
+        )
+        self.assertNotIn("拒绝直接采用", grounded)
+        self.assertIn("## 可核验引用片段", grounded)
 
     def test_heuristic_reranker_keeps_relevant_candidate_visible(self):
         candidates = [

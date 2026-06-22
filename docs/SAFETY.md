@@ -26,7 +26,7 @@ In this mode, commands are planned and saved as artifacts, but not executed.
 
 | Risk Level | Meaning | Default Execution |
 | --- | --- | --- |
-| `safe` | Low-risk inspection commands, such as `python script.py --help`. | May run only when user selects `run safe commands`. |
+| `safe` | Low-risk command shape. Repository Python scripts still require explicit trust. | Runs only after the relevant execution gate is enabled. |
 | `needs_confirm` | Training, dependency installation, repository scripts, or checkpoint-dependent commands. | Not executed by default. |
 | `unsafe` | Destructive, privileged, shell-piped, or unparseable commands. | Blocked. |
 
@@ -52,9 +52,20 @@ Existing repository loading rules still apply:
 原有仓库加载规则继续生效：
 
 - GitHub clone only accepts public HTTPS URLs in the `https://github.com/owner/repo` form.
+- Git clone uses a timeout, disables interactive credential prompts, and rejects repositories above the configured post-clone size limit.
 - SSH URLs, non-GitHub domains, spoofed domains, query strings, and fragments are rejected.
 - Zip extraction checks path traversal, absolute paths, symlinks, member count, and total size.
 - Uploaded files, cloned repositories, vector stores, outputs, and `.env` are ignored by Git.
+
+## Repository Script Trust / 仓库脚本信任
+
+`--help` and `--dry-run` are conventions, not isolation mechanisms. A Python script can execute arbitrary top-level code before parsing either flag. ResearchFlow-Agent therefore blocks repository scripts unless the user explicitly confirms that the repository has been reviewed and trusted.
+
+`--help` 和 `--dry-run` 只是约定，不是隔离机制。Python 脚本可能在解析这些参数前执行任意顶层代码，因此系统会阻止未被显式检查和信任的仓库脚本。
+
+When execution is enabled, script paths must remain inside the workspace and child processes receive a sanitized environment without API keys. This is still not a full sandbox; untrusted repositories should be executed in an isolated container or virtual machine.
+
+启用执行后，脚本路径必须位于工作区内，子进程也不会继承 API key。该机制仍不是完整沙箱；不可信仓库应在隔离容器或虚拟机中执行。
 
 ## Human Review / 人工复核
 

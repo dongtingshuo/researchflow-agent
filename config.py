@@ -66,7 +66,8 @@ class Settings:
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     allow_hash_embedding_fallback: bool = True
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    enable_cross_encoder_reranker: bool = True
+    enable_cross_encoder_reranker: bool = False
+    allow_external_content_to_llm: bool = False
     upload_dir: Path = UPLOAD_DIR
     vectorstore_dir: Path = VECTORSTORE_DIR
     workspace_dir: Path = WORKSPACE_DIR
@@ -77,12 +78,17 @@ class Settings:
     top_k_retrieval: int = 8
     reranker_candidate_multiplier: int = 4
     git_clone_timeout_seconds: int = 120
+    max_clone_total_bytes: int = 500_000_000
     max_zip_members: int = 4000
     max_zip_total_bytes: int = 150_000_000
 
     @property
     def llm_enabled(self) -> bool:
-        return bool(self.openai_api_key and self.openai_api_key != "your_api_key_here")
+        return bool(
+            self.allow_external_content_to_llm
+            and self.openai_api_key
+            and self.openai_api_key != "your_api_key_here"
+        )
 
     def data_directories(self) -> Iterable[Path]:
         return (
@@ -107,7 +113,10 @@ def get_settings() -> Settings:
         ),
         allow_hash_embedding_fallback=_env_bool("ALLOW_HASH_EMBEDDING_FALLBACK", True),
         reranker_model=os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
-        enable_cross_encoder_reranker=_env_bool("ENABLE_CROSS_ENCODER_RERANKER", True),
+        enable_cross_encoder_reranker=_env_bool("ENABLE_CROSS_ENCODER_RERANKER", False),
+        allow_external_content_to_llm=_env_bool(
+            "ALLOW_EXTERNAL_CONTENT_TO_LLM", False
+        ),
         upload_dir=_resolve_path(os.getenv("UPLOAD_DIR", "data/uploads")),
         vectorstore_dir=_resolve_path(
             os.getenv("VECTORSTORE_DIR", "data/vectorstores")
@@ -122,6 +131,7 @@ def get_settings() -> Settings:
         top_k_retrieval=_env_int("TOP_K_RETRIEVAL", 8),
         reranker_candidate_multiplier=_env_int("RERANKER_CANDIDATE_MULTIPLIER", 4),
         git_clone_timeout_seconds=_env_int("GIT_CLONE_TIMEOUT_SECONDS", 120),
+        max_clone_total_bytes=_env_int("MAX_CLONE_TOTAL_BYTES", 500_000_000),
         max_zip_members=_env_int("MAX_ZIP_MEMBERS", 4000),
         max_zip_total_bytes=_env_int("MAX_ZIP_TOTAL_BYTES", 150_000_000),
     )

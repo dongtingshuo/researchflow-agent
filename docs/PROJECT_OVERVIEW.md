@@ -4,13 +4,13 @@
 
 ## 中文项目简介
 
-ResearchFlow-Agent 是一个面向科研论文阅读、代码仓库分析、实验复现规划、指标解析和证据核验的 AI Agent 系统。它把论文解析、RAG 问答、代码结构分析、复现命令规划、安全执行、日志解析、结果对比和 Markdown 报告生成组织为一个可复核的本地工作流。
+ResearchFlow-Agent 是一个面向科研论文阅读、代码仓库分析、实验复现规划、指标解析和证据核验的 AI Agent 系统。它把论文解析、RAG 问答、代码结构分析、复现命令规划、受控执行、日志解析、结果对比和 Markdown 报告生成组织为一个可复核的本地工作流。
 
 系统的目标不是替代人工科研判断，而是帮助使用者把论文证据、代码证据、运行日志和生成报告连接起来，使每一步都更容易检查和追踪。
 
 ## English Overview
 
-ResearchFlow-Agent supports paper-grounded research workflow automation. It connects paper understanding, code analysis, command planning, safe execution, metric parsing, evidence-aware verification, and structured reporting.
+ResearchFlow-Agent supports paper-grounded research workflow automation. It connects paper understanding, code analysis, command planning, controlled execution, metric parsing, evidence-aware verification, and structured reporting.
 
 The system is designed as an assistive workflow tool. It does not claim to complete arbitrary experiment reproduction automatically. Instead, it makes intermediate evidence, commands, logs, and uncertainty visible for human review.
 
@@ -62,7 +62,7 @@ ResearchFlow-Agent 由以下模块组成：
 2. Extract experiment-related claims and metrics.
 3. Analyze the associated code repository.
 4. Plan candidate reproduction commands.
-5. Execute safe commands or run in dry-run mode.
+5. Use dry-run, or explicitly trust the reviewed repository before executing inspection commands.
 6. Parse logs and extract metrics.
 7. Compare reproduced results with paper-reported results.
 8. Verify evidence sources.
@@ -74,7 +74,7 @@ ResearchFlow-Agent 由以下模块组成：
 2. 抽取实验相关结论和指标。
 3. 分析关联代码仓库。
 4. 规划候选复现命令。
-5. 执行 safe 命令或使用 dry-run 模式。
+5. 使用 dry-run，或在检查仓库后显式信任并执行检查命令。
 6. 解析日志并抽取指标。
 7. 对比复现结果和论文报告结果。
 8. 核验证据来源。
@@ -86,8 +86,8 @@ ResearchFlow-Agent 由以下模块组成：
 - 基于检索增强的论文理解
 - Code-aware reproduction planning
 - 代码感知的复现规划
-- Dry-run-first safe execution
-- dry-run 优先的安全执行机制
+- Dry-run-first controlled execution with an explicit repository trust gate
+- 带显式仓库信任门的 dry-run 优先受控执行机制
 - Log-based metric parsing
 - 基于日志的指标解析
 - Evidence-aware verification

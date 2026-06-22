@@ -57,7 +57,7 @@ Output: entry files, config files, candidate commands, risk levels, and warnings
 输入：`CodeAnalysisResult`。  
 输出：入口文件、配置文件、候选命令、风险等级和提示。
 
-## Runner / 安全 Runner
+## Runner / 受控 Runner
 
 Module:
 
@@ -68,15 +68,24 @@ src.experiment.runner
 Function:
 
 ```python
-run_command_candidate(candidate, cwd, dry_run=True) -> CommandRunResult
+run_command_candidate(
+    candidate,
+    cwd,
+    dry_run=True,
+    allow_repository_scripts=False,
+) -> CommandRunResult
 ```
 
-Input: command candidate and working directory.
+Input: command candidate, working directory, execution mode, and explicit repository-script trust flag.
 
 Output: stdout, stderr, return code, duration, risk level, execution flag, and JSON result path.
 
-输入：候选命令和工作目录。  
+输入：候选命令、工作目录、执行模式和显式仓库脚本信任标志。
 输出：stdout、stderr、返回码、耗时、风险等级、是否执行和 JSON 结果路径。
+
+Repository Python scripts remain blocked unless `allow_repository_scripts=True`. This flag should only be used after reviewing the repository.
+
+只有设置 `allow_repository_scripts=True` 才会执行仓库 Python 脚本，并且应先检查仓库内容。
 
 ## Log Parser / 日志解析
 

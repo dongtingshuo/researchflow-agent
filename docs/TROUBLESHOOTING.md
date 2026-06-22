@@ -29,6 +29,10 @@ conda activate researchflow
 pip install -r requirements.txt
 ```
 
+For test and contribution workflows, use `pip install -r requirements-dev.txt`.
+
+运行测试或参与开发时，请使用 `pip install -r requirements-dev.txt`。
+
 ## PDF Parsing Fails / PDF 解析失败
 
 Possible causes:
@@ -64,6 +68,14 @@ Check:
 - 仓库可访问性
 - clone timeout
 - clone 超时时间
+- configured post-clone size limit
+- 配置的 clone 后仓库体积限制
+
+## LLM Uses the Local Fallback / LLM 使用本地 Fallback
+
+External content transmission is opt-in. Configure the endpoint and key, then set `ALLOW_EXTERNAL_CONTENT_TO_LLM=true` only when sending paper and repository excerpts to that provider is acceptable.
+
+外部内容传输默认关闭。配置接口和密钥后，仅在确认可以向该服务商发送论文和仓库片段时设置 `ALLOW_EXTERNAL_CONTENT_TO_LLM=true`。
 
 ## Demo Does Not Generate a Report / Demo 没有生成报告
 
@@ -123,6 +135,6 @@ Repository commands can modify environments, require datasets, run for a long ti
 
 仓库命令可能修改环境、依赖数据集、运行时间较长或假设特定硬件。dry-run 模式可以先展示命令规划，再决定是否执行。
 
-Only commands classified as `safe` are executed when safe execution is explicitly selected.
+Repository scripts run only after the explicit trust option is selected. Risk classification and the trust gate reduce accidental execution but do not provide a full sandbox.
 
-只有在明确选择安全执行时，才会运行被分类为 `safe` 的命令。
+只有显式选择信任选项后才会运行仓库脚本。风险分类和信任门可减少误执行，但不构成完整沙箱。

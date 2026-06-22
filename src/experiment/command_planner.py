@@ -8,6 +8,7 @@ import re
 import shlex
 
 from src.code_analyzer.models import CodeAnalysisResult
+from src.utils.files import portable_display_path
 
 
 ENTRY_NAMES = {
@@ -101,7 +102,7 @@ class CommandPlan:
         lines = [
             "# Reproduction Command Plan",
             "",
-            f"- Workspace: `{self.workspace_path}`",
+            f"- Workspace: `{portable_display_path(self.workspace_path)}`",
             "",
             "## Entry Files",
         ]

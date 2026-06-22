@@ -280,13 +280,15 @@ def run_reproduction_workflow(
             raise ValueError("Please provide a GitHub repository URL or upload a code zip.")
 
         command_plan = plan_reproduction_commands(code_analysis, user_notes=user_notes)
-        dry_run = execution_mode != "run safe commands"
+        allow_repository_scripts = execution_mode == "trust and run inspection commands"
+        dry_run = not allow_repository_scripts
         run_results = run_safe_commands(
             command_plan.commands,
             cwd=command_plan.workspace_path,
             output_dir=settings.output_dir,
             timeout_seconds=int(timeout_seconds or 30),
             dry_run=dry_run,
+            allow_repository_scripts=allow_repository_scripts,
         )
         combined_log = "\n".join(item.combined_log() for item in run_results)
         log_summary = parse_experiment_log(combined_log)
@@ -536,9 +538,17 @@ def build_app():
                 )
                 reproduction_zip = gr.File(label="Code Zip", file_types=[".zip"])
                 reproduction_mode = gr.Radio(
-                    choices=["dry-run only", "run safe commands"],
+                    choices=[
+                        "dry-run only",
+                        "trust and run inspection commands",
+                    ],
                     value="dry-run only",
-                    label="Execution Mode",
+                    label="Execution Mode / 执行模式",
+                    info=(
+                        "Repository scripts can execute arbitrary code. Select the trust "
+                        "option only after reviewing the repository. / 仓库脚本可能执行任意代码，"
+                        "请仅在检查并信任仓库后启用。"
+                    ),
                 )
                 reproduction_timeout = gr.Number(
                     value=30,

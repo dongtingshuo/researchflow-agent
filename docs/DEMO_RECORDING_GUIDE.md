@@ -21,7 +21,7 @@ Open the local Gradio URL printed in the terminal.
 5. Analyze `examples/reproduction_demo/toy_repo/` through a zip upload, or use a public GitHub URL.
 6. Open the **Reproduction / 论文复现** tab.
 7. Use dry-run mode to show command planning.
-8. Use `run safe commands` to show log parsing and report generation with the toy repository.
+8. Use `--run-safe` with the bundled reviewed toy repository to show log parsing and report generation.
 9. Open the generated Markdown report.
 
 中文流程：
@@ -33,7 +33,7 @@ Open the local Gradio URL printed in the terminal.
 5. 通过 zip 上传分析 `examples/reproduction_demo/toy_repo/`，或使用公开 GitHub URL。
 6. 打开 **Reproduction / 论文复现** Tab。
 7. 使用 dry-run 展示命令规划。
-8. 使用 `run safe commands` 展示日志解析和报告生成。
+8. 对项目内置且已检查的 toy 仓库使用 `--run-safe`，展示日志解析和报告生成。
 9. 打开生成的 Markdown report。
 
 ## Recommended Screenshots / 推荐截图
